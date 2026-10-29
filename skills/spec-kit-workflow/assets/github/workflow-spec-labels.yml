@@ -1,0 +1,77 @@
+# Keeps the progress label on every pull request from the task lists of the
+# Spec-Kit features it touches: spec:not-started | spec:in-progress |
+# spec:done. A pull request that touches no feature carries none of them.
+name: spec-labels
+
+on:
+  # `pull_request_target` runs the base's workflow with a writable token, also
+  # for a fork. Nothing authored by the request reaches this runner.
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: spec-labels-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  labels:
+    name: spec / labels
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # The base, which is the event's default. Never add a checkout of the
+      # head, a `git fetch` of it, an install from it, or a `run:` of its files.
+      - uses: "actions/checkout@{{PINNED_SHA}}" # CONFIGURE: checkout commit SHA, then its "# vX.Y.Z" comment
+        with:
+          persist-credentials: false
+      - name: Snapshot the head through the API
+        env:
+          GH_TOKEN: ${{ github.token }}
+          N: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: python3 scripts/spec_kit_features.py snapshot --repo "$REPO" --pr "$N" --output "$RUNNER_TEMP/snapshot.json"
+      - name: Compute the label plan and apply it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          N: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          CURRENT: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          set -euo pipefail
+          python3 scripts/spec_kit_features.py labels --snapshot "$RUNNER_TEMP/snapshot.json" \
+            --current "$CURRENT" --json --output "$RUNNER_TEMP/plan.json"
+          cat "$RUNNER_TEMP/plan.json"
+          # The plan may only name a label of the fixed taxonomy.
+          check() {
+            case "$1" in
+              spec:not-started|spec:in-progress|spec:done) ;;
+              *) echo "refusing unexpected label: $1" >&2; exit 1 ;;
+            esac
+          }
+          # Written to files first, so a jq failure fails the step instead of
+          # reading as an empty plan.
+          jq -r '.add[]' "$RUNNER_TEMP/plan.json" > "$RUNNER_TEMP/add.txt"
+          jq -r '.remove[]' "$RUNNER_TEMP/plan.json" > "$RUNNER_TEMP/remove.txt"
+          while IFS= read -r label; do
+            [ -n "$label" ] || continue
+            check "$label"
+            gh api -X POST "repos/$REPO/issues/$N/labels" -f "labels[]=$label" > /dev/null
+          done < "$RUNNER_TEMP/add.txt"
+          while IFS= read -r label; do
+            [ -n "$label" ] || continue
+            check "$label"
+            encoded=$(jq -rn --arg l "$label" '$l | @uri')
+            # A label already gone answers 404; any other error fails the job,
+            # because a skipped removal leaves a label that says the opposite.
+            if ! err=$(gh api -X DELETE "repos/$REPO/issues/$N/labels/$encoded" 2>&1 >/dev/null); then
+              case "$err" in
+                *"HTTP 404"*) ;;
+                *) printf '%s\n' "$err" >&2; exit 1 ;;
+              esac
+            fi
+          done < "$RUNNER_TEMP/remove.txt"

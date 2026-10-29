@@ -1,0 +1,68 @@
+# GitLab CI jobs for Spec-Kit features in merge requests: included from the
+# project's `.gitlab-ci.yml` (`include: - local: ...`) or pasted in. GitLab
+# Runner runs each script with `errexit`, so a failing script fails its job.
+
+.spec-base:
+  image: "{{PYTHON_IMAGE}}" # CONFIGURE: an image with python3 and git, plus curl and jq when SPEC_LABELS_TOKEN is set
+  stage: spec
+  variables:
+    GIT_DEPTH: "0"
+    SPEC_SHAPE: "{{REQUEST_SHAPE}}" # CONFIGURE: combined or split, from the contract
+  before_script:
+    - |
+      tools="python3 git"
+      if [ -n "${SPEC_LABELS_TOKEN:-}" ]; then tools="$tools curl jq"; fi
+      for tool in $tools; do
+        command -v "$tool" > /dev/null || { echo "The spec jobs need $tool, which the image $CI_JOB_IMAGE lacks; choose an image that has it." >&2; exit 1; }
+      done
+
+# Fails the pipeline when a touched feature lacks its specification or plan
+# and, once the merge request is no longer a draft, when a task of a touched
+# feature is unfinished. Enforced by the project setting "Pipelines must
+# succeed".
+spec:check:
+  extends: .spec-base
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - |
+      if [ -n "${CI_MERGE_REQUEST_IID:-}" ]; then
+        flag=""
+        case "${CI_MERGE_REQUEST_TITLE:-}" in Draft:*|"[Draft]"*|"(Draft)"*) flag="--draft" ;; esac
+        python3 scripts/spec_kit_features.py check --base "$CI_MERGE_REQUEST_DIFF_BASE_SHA" --head "$CI_COMMIT_SHA" --shape "$SPEC_SHAPE" $flag
+      else
+        python3 scripts/spec_kit_features.py check --all
+      fi
+
+# Computes the progress label; with SPEC_LABELS_TOKEN it applies it, otherwise
+# it prints the plan. A label a job applies shows on the merge request after
+# the next pipeline, because no pipeline starts on a label change. With the
+# token this job holds a write token while running the merge request's own
+# configuration and script: GitLab has no job that runs on the base ref.
+spec:labels:
+  extends: .spec-base
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  # Advisory: spec:check alone decides the merge.
+  allow_failure: true
+  script:
+    - |
+      python3 scripts/spec_kit_features.py labels --base "$CI_MERGE_REQUEST_DIFF_BASE_SHA" --head "$CI_COMMIT_SHA" \
+        --current "${CI_MERGE_REQUEST_LABELS:-}" --json --output plan.json
+      cat plan.json
+      if [ -z "${SPEC_LABELS_TOKEN:-}" ]; then
+        echo "SPEC_LABELS_TOKEN is not set: plan printed, labels unchanged."
+        exit 0
+      fi
+      for label in $(jq -r '.add[], .remove[]' plan.json); do
+        case "$label" in
+          spec:not-started|spec:in-progress|spec:done) ;;
+          *) echo "refusing unexpected label: $label" >&2; exit 1 ;;
+        esac
+      done
+      add=$(jq -r '.add | join(",")' plan.json)
+      remove=$(jq -r '.remove | join(",")' plan.json)
+      curl --fail --silent --show-error --request PUT --header "PRIVATE-TOKEN: $SPEC_LABELS_TOKEN" \
+        --data-urlencode "add_labels=$add" --data-urlencode "remove_labels=$remove" \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID" > /dev/null

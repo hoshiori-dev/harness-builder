@@ -1,0 +1,5 @@
+[
+  {"name": "spec:not-started", "color": "#ededed", "description": "No task of the touched Spec-Kit features is ticked (set by the labels job)"},
+  {"name": "spec:in-progress", "color": "#1d76db", "description": "Some tasks of the touched Spec-Kit features are ticked (set by the labels job)"},
+  {"name": "spec:done", "color": "#0e8a16", "description": "Every task of the touched Spec-Kit features is ticked (set by the labels job)"}
+]

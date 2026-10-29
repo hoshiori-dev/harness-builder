@@ -1,0 +1,30 @@
+# A job for the project's existing checks workflow, under `jobs:`. Add
+# `spec-check` to the aggregator gate's `needs:`.
+  spec-check:
+    name: spec / check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: "actions/checkout@{{PINNED_SHA}}" # CONFIGURE: checkout commit SHA, then its "# vX.Y.Z" comment
+        with:
+          fetch-depth: 0
+      # On a pull request: every touched feature has its specification and
+      # plan; an unfinished task warns while the pull request is a draft and
+      # fails once it is ready. On a push to the default branch: every feature
+      # directory has its required files.
+      - name: Check the touched features
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          SHAPE: "{{REQUEST_SHAPE}}" # CONFIGURE: combined or split, from the contract
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            flag=""
+            [ "$DRAFT" = "true" ] && flag="--draft"
+            python3 scripts/spec_kit_features.py check --base "$BASE" --head "$HEAD" --shape "$SHAPE" $flag
+          else
+            python3 scripts/spec_kit_features.py check --all
+          fi
