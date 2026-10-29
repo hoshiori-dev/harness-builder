@@ -17,8 +17,10 @@ reasons, and never chooses on the user's behalf.
 
 ## Install
 
-- **Claude Code**: `/plugin marketplace add hoshiori-dev/harness-builder`,
-  then install `harness-builder`; for local development, `claude --plugin-dir .`.
+- **Claude Code**: `/plugin install harness-builder --marketplace hoshiori-dev/harness-builder`
+  (one step on Claude Code 2.1.275 or later; on earlier versions run
+  `/plugin marketplace add hoshiori-dev/harness-builder` first, then install);
+  for local development, `claude --plugin-dir .`.
 - **Codex**: `codex plugin marketplace add hoshiori-dev/harness-builder`, then
   `codex plugin add harness-builder@harness-builder`.
 - **Antigravity**: `agy plugin install https://github.com/hoshiori-dev/harness-builder`.

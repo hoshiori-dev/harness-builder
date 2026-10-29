@@ -36,7 +36,7 @@ from `.agents/knowledge/shared-blocks.md`, prune three times, pass
 ## 5. Integration
 
 - [x] 5.1 Both README skill tables list all fifteen skills; `just harness-check` passes.
-- [ ] 5.2 `just gen`, `just skills-check`, `just check` green; `just clients-validate` passes in the dev container.
+- [x] 5.2 `just gen`, `just skills-check`, `just check` green; `just clients-validate` passes in the dev container.
 - [ ] 5.3 Behavioural tests: run every spec's Triggering and Outcomes scenarios through clean-context subagents on the least capable model tier available; record pass/fail per scenario in a Verification report kept out of the repository until the pull request exists.
 - [ ] 5.4 Canary: run `/harness-create` against a scratch repository in the dev container; the result has an entrypoint within budget, reachable knowledge files, and a passing `check_harness.py`.
 

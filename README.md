@@ -13,8 +13,9 @@ Codex、Antigravity 的技能：两个手动唤起的入口（创建 / 改进）
 
 ## 安装
 
-- **Claude Code**：`/plugin marketplace add hoshiori-dev/harness-builder`，再安装
-  `harness-builder`；本地开发用 `claude --plugin-dir .`。
+- **Claude Code**：`/plugin install harness-builder --marketplace hoshiori-dev/harness-builder`
+  （Claude Code 2.1.275 及以上一步完成；更早版本先 `/plugin marketplace add hoshiori-dev/harness-builder`
+  再安装）；本地开发用 `claude --plugin-dir .`。
 - **Codex**：`codex plugin marketplace add hoshiori-dev/harness-builder`，再
   `codex plugin add harness-builder@harness-builder`。
 - **Antigravity**：`agy plugin install https://github.com/hoshiori-dev/harness-builder`。
