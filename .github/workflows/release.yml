@@ -1,0 +1,36 @@
+# Release on a version tag: verify, build the plugin archive, publish a GitHub
+# release with generated notes (.github/release.yml) and the archive attached.
+# The tag must equal "v" + plugin.json#version; scripts/dist.ts enforces it.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  release:
+    name: release / publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-tools
+      - run: just check
+      - run: just dist --tag "$GITHUB_REF_NAME"
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
+          gh release upload "$GITHUB_REF_NAME" dist/*.zip
+          gh release edit "$GITHUB_REF_NAME" --draft=false

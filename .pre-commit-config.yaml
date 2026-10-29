@@ -1,0 +1,43 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-json
+        exclude: '(^|/)devcontainer\.json$|\.jsonc$'
+      - id: check-yaml
+      - id: check-toml
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: detect-private-key
+  - repo: local
+    hooks:
+      - id: deno-fmt
+        name: deno fmt --check
+        entry: deno fmt --check
+        language: system
+        pass_filenames: false
+      - id: deno-lint
+        name: deno lint
+        entry: deno lint
+        language: system
+        pass_filenames: false
+      - id: gen-check
+        name: generated client files are current (just gen --check)
+        entry: just gen --check
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: betterleaks
+        name: betterleaks (secrets in staged files)
+        entry: betterleaks dir --no-banner --redact
+        language: system
+        pass_filenames: true

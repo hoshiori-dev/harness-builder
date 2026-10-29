@@ -1,0 +1,49 @@
+schema: spec-driven
+
+# Project context: constraints an agent cannot infer from the code.
+context: |
+  This repository is harness-builder, an Agent Plugins v1.0.0 plugin that
+  builds, improves, and repairs agent harnesses for other projects.
+  Specs are organised as catalogs: openspec/specs/<catalog>/spec.md holds the
+  rules every entry of that catalog follows, and openspec/specs/<catalog>/<name>/spec.md
+  describes one shipped entry. The catalogs are skill (skills/<name>/) and
+  agent (one file per supported client whose plugin system carries agents,
+  under com.*/agents/; Claude Code today). The plugin ships no MCP server.
+  Every shipped entry has exactly one spec and every spec has
+  exactly one shipped entry; `just validate` enforces the pairing.
+  A change to the harness, scripts, CI, documentation, or generated client
+  files is spec-less and usually needs no change directory; one opened for a
+  recorded design sets skip_specs: true in its .openspec.yaml and ships
+  proposal, design, and tasks only.
+  Write every artifact in English.
+
+rules:
+  proposal:
+    - State which catalogs and clients the change touches, and name every
+      entry that is added, changed, or removed.
+    - End with an "Acceptance" section listing what becomes true and what
+      must stay true, each checkable by a command or a client walkthrough.
+  specs:
+    - A catalog-level spec states rules only; it never describes one entry.
+    - An entry spec's Purpose names the clients the entry ships to and any
+      client where it is not shipped, with the reason.
+    - Describe observable behaviour, not file contents or implementation
+      steps; every requirement has at least one scenario a reader can judge
+      without reading code.
+  design:
+    - List the client-specific files the change needs under each com.*
+      directory and which of them `just gen` produces.
+  tasks:
+    - Write tasks only after the proposal is approved on the pull request.
+    - Every change ends with `just gen`, `just check`, and, for client-facing
+      entries, `just clients-validate`; include those as the last tasks.
+    - Never add a task that archives the change or syncs specs by itself;
+      the implementer archives on the pull request before merge.
+
+operations:
+  apply:
+    guidance:
+      - Implement one task at a time and keep `just check` green between tasks.
+  archive:
+    guidance:
+      - Archive only after `just check` passes and the pull request is approved.

@@ -1,0 +1,76 @@
+# Pull-request hygiene and the archive gate. `checks / pr`: the title follows
+# Conventional Commits and the body keeps the template's sections with the
+# secrets item ticked (scripts/check_pr.ts). `checks / spec-archived`: reported
+# only while no OpenSpec change is unarchived (scripts/check_spec_archived.ts),
+# so the ruleset's required check is absent until the archive lands and the run
+# stays green meanwhile. Reruns on edits and ready/draft transitions without
+# rerunning the suite, which is why this is not part of checks.yml.
+name: pr
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions: {}
+
+jobs:
+  pr:
+    name: checks / pr
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+      - name: Check title and body
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: deno run --allow-read --allow-env scripts/check_pr.ts
+  # Decides whether the tree holds an unarchived OpenSpec change. The verdict
+  # depends on the tree alone, so every run on a commit agrees. Status 1 is a
+  # state to wait in, not a failure; any other non-zero status fails the job.
+  archive-verdict:
+    name: checks / archive-verdict
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      archived: ${{ steps.verdict.outputs.archived }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+      - id: verdict
+        run: |
+          status=0
+          deno run --allow-read scripts/check_spec_archived.ts || status=$?
+          case "${status}" in
+            0) echo "archived=true" >> "${GITHUB_OUTPUT}" ;;
+            1) echo "archived=false" >> "${GITHUB_OUTPUT}" ;;
+            *) exit "${status}" ;;
+          esac
+  # Carries the required check. It succeeds either way, but under the required
+  # name only when no change is unarchived: while one is, nothing reports
+  # `checks / spec-archived`, the ruleset blocks the merge, and the run is
+  # green. `checks / awaiting-archive` never becomes a required check.
+  spec-archived:
+    name: ${{ needs.archive-verdict.outputs.archived == 'true' && 'checks / spec-archived' || 'checks / awaiting-archive' }}
+    needs: archive-verdict
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          ARCHIVED: ${{ needs.archive-verdict.outputs.archived }}
+        run: |
+          if [[ "${ARCHIVED}" == "true" ]]; then
+            echo "No unarchived OpenSpec change."
+          else
+            echo "Waiting for the archive; the archive-verdict job names the unarchived changes."
+          fi

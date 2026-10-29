@@ -1,0 +1,23 @@
+{
+  "name": "harness-builder",
+  "version": "0.1.0",
+  "description": "Builds, audits, and repairs a project's agent harness layer by layer — environment and sandbox, knowledge base and routing, hard-boundary gates, authority boundary, spec-driven completion criteria, and entropy management — with spec-driven development skills for OpenSpec, Spec-Kit, and lightweight specs.",
+  "author": {
+    "name": "hoshiori-dev",
+    "url": "https://github.com/hoshiori-dev"
+  },
+  "homepage": "https://github.com/hoshiori-dev/harness-builder",
+  "repository": "https://github.com/hoshiori-dev/harness-builder",
+  "license": "Apache-2.0",
+  "keywords": [
+    "agent-plugins",
+    "harness",
+    "agents-md",
+    "spec-driven-development",
+    "openspec",
+    "spec-kit",
+    "claude-code",
+    "codex",
+    "antigravity"
+  ]
+}

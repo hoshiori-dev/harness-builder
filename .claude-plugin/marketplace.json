@@ -1,0 +1,14 @@
+{
+  "name": "harness-builder",
+  "owner": {
+    "name": "hoshiori-dev"
+  },
+  "description": "Builds, audits, and repairs a project's agent harness layer by layer — environment and sandbox, knowledge base and routing, hard-boundary gates, authority boundary, spec-driven completion criteria, and entropy management — with spec-driven development skills for OpenSpec, Spec-Kit, and lightweight specs.",
+  "plugins": [
+    {
+      "name": "harness-builder",
+      "source": "./",
+      "description": "Builds, audits, and repairs a project's agent harness layer by layer — environment and sandbox, knowledge base and routing, hard-boundary gates, authority boundary, spec-driven completion criteria, and entropy management — with spec-driven development skills for OpenSpec, Spec-Kit, and lightweight specs."
+    }
+  ]
+}

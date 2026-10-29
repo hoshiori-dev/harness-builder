@@ -1,0 +1,87 @@
+# The full quality suite, on pull requests and on pushes to main. A pull
+# request runs it on the merge result of its latest commit; a new push cancels
+# the run in progress. Every job runs a justfile recipe that also runs locally
+# (`just check` is the union); .agents/knowledge/github/checks.md maps job
+# names to recipes. Job names are what rulesets require, so keep them unique
+# across workflows. Secret scanning (secret.yml) and the fast per-push subset
+# (push.yml) are separate workflows.
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: checks / lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-tools
+      - run: just pre-commit
+  test:
+    name: checks / test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-tools
+      - run: just test
+  plugin:
+    name: checks / plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-tools
+      - run: just gen --check
+      - run: just validate
+      - run: just harness-check
+  spec:
+    name: checks / spec
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-tools
+        with:
+          deno-cache: "false"
+      - run: just spec-check
+  gate:
+    # The aggregator for this workflow; a ruleset requires it together with
+    # `secrets / scan` and `checks / pr`. A skipped job reports success, so
+    # this job fails on failure or cancellation only.
+    name: checks / gate
+    if: always()
+    needs: [lint, test, plugin, spec]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All required jobs succeeded
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS"
+          if printf '%s' "$RESULTS" | grep -Eq '"result": *"(failure|cancelled)"'; then
+            echo "::error::A required job failed or was cancelled. Fix that job; do not weaken this gate."
+            exit 1
+          fi

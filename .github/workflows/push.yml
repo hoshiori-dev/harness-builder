@@ -1,0 +1,32 @@
+# Fast feedback on every push to a branch other than main: the Deno-only
+# checks (`just check-fast`) in one job, without installing openspec,
+# pre-commit, or betterleaks. The full suite runs on the pull request
+# (checks.yml) and on main; secret scanning has its own workflow (secret.yml).
+name: push
+
+on:
+  push:
+    branches-ignore: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    name: push / check-fast
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-tools
+        with:
+          pre-commit: "false"
+          openspec: "false"
+          betterleaks: "false"
+      - run: just check-fast

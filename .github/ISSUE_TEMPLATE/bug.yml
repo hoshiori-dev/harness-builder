@@ -1,0 +1,32 @@
+name: Bug
+description: A shipped skill, MCP server, or agent does not behave as its spec says.
+labels: ["type: bug"]
+body:
+  - type: dropdown
+    id: client
+    attributes:
+      label: Client
+      options: ["Claude Code", "Codex", "Antigravity", "Other Agent Plugins client", "Repository tooling"]
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: Quote the requirement or scenario from openspec/specs/ that is violated.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happened, with the client version and the command or prompt used.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How a reviewer confirms the fix without reading the code.
+    validations:
+      required: true

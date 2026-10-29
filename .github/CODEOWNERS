@@ -1,0 +1,5 @@
+# Review routing. CODEOWNERS only requests review; the ruleset does not require a
+# code-owner approval (solo maintainer), see .agents/knowledge/github/platform-settings.md.
+# The owner must be a user or a team (@org/team) with write access; an
+# organization login is rejected as "Unknown owner".
+* @ryan-minato

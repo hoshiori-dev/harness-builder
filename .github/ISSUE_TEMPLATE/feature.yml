@@ -1,0 +1,32 @@
+name: Feature
+description: New or changed behaviour of a skill, MCP server, or agent.
+labels: ["type: feature"]
+body:
+  - type: dropdown
+    id: catalog
+    attributes:
+      label: Catalog
+      options: ["skill", "mcp", "agent", "several"]
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What a user of the plugin cannot do today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The behaviour you want, in terms of what the agent or client does. Implementation details belong in the OpenSpec design.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Observable outcomes a reviewer can judge; they become the OpenSpec scenarios.
+    validations:
+      required: true

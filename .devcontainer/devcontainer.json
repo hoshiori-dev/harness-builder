@@ -1,0 +1,39 @@
+{
+  "$schema": "https://raw.githubusercontent.com/devcontainers/spec/refs/heads/main/schemas/devContainer.schema.json",
+  "name": "Agent Plugins",
+  "image": "mcr.microsoft.com/devcontainers/base:resolute",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "configureZshAsDefaultShell": true
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/git-lfs:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/node:2": {},
+    "ghcr.io/hoshiori-dev/devcontainer-features/antigravity:1": {},
+    "ghcr.io/hoshiori-dev/devcontainer-features/betterleaks:1": {},
+    "ghcr.io/hoshiori-dev/devcontainer-features/claude-code:1": {},
+    "ghcr.io/hoshiori-dev/devcontainer-features/codex:1": {},
+    "ghcr.io/hoshiori-dev/devcontainer-features/deno:1": {},
+    "ghcr.io/hoshiori-dev/devcontainer-features/openspec:1": {},
+    "ghcr.io/hoshiori-dev/devcontainer-features/uv:1": {
+      "toolsToInstall": "pre-commit,rust-just"
+    }
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "deno.enable": true
+      },
+      "extensions": [
+        "denoland.vscode-deno",
+        "EditorConfig.EditorConfig",
+        "ms-vscode-remote.remote-containers",
+        "anthropic.claude-code",
+        "openai.chatgpt"
+      ]
+    }
+  }
+}

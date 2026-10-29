@@ -1,0 +1,8 @@
+# Project-level Codex configuration for this repository (trusted projects only).
+# Codex reads the plugin itself from plugin.json and skills/ through the
+# local marketplace in .agents/plugins/marketplace.json (`codex plugin marketplace add .`);
+# this table enables it for the workspace. Codex plugins carry no agents, so the
+# plugin ships none to Codex (.agents/knowledge/compatibility-watch.md, W9).
+
+[plugins."harness-builder@harness-builder"]
+enabled = true

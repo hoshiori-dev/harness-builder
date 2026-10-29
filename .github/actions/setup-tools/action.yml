@@ -1,0 +1,49 @@
+name: Set up tools
+description: Installs the toolchain the justfile recipes need (deno, uv, just, pre-commit, openspec, betterleaks). Versions are pinned here; the dev container pins its own through features. The optional tools are skipped by workflows whose recipes do not need them.
+inputs:
+  deno-cache:
+    description: Save and restore DENO_DIR through the Actions cache ("true" or "false"). Set "false" in a job that never runs deno; setup-deno's post step fails when the directory does not exist.
+    default: "true"
+  pre-commit:
+    description: Install pre-commit ("true" or "false").
+    default: "true"
+  openspec:
+    description: Install openspec ("true" or "false").
+    default: "true"
+  betterleaks:
+    description: Install betterleaks ("true" or "false").
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+      with:
+        deno-version: v2.x
+        cache: ${{ inputs.deno-cache }}
+    - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+    - name: Install just
+      shell: bash
+      run: uv tool install rust-just==1.59.0
+    - name: Install pre-commit
+      if: inputs.pre-commit == 'true'
+      shell: bash
+      run: uv tool install pre-commit==4.7.0
+    - name: Install openspec
+      if: inputs.openspec == 'true'
+      shell: bash
+      run: npm install --global @fission-ai/openspec@1.15.0
+    - name: Install betterleaks
+      if: inputs.betterleaks == 'true'
+      shell: bash
+      env:
+        VERSION: "1.9.0"
+        # From checksums.txt of the release; bump both together.
+        SHA256: "f8b185a39ffcece2a1ca82bf3a4e7435cd81963ffd16b7a9128daf75f35f6de7"
+      run: |
+        set -euo pipefail
+        url="https://github.com/betterleaks/betterleaks/releases/download/v${VERSION}/betterleaks_${VERSION}_linux_x64.tar.gz"
+        curl -sSfL "$url" -o /tmp/betterleaks.tar.gz
+        echo "${SHA256}  /tmp/betterleaks.tar.gz" | sha256sum -c -
+        mkdir -p "$HOME/.local/bin"
+        tar -xzf /tmp/betterleaks.tar.gz -C "$HOME/.local/bin" betterleaks
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"

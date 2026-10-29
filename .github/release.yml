@@ -1,0 +1,16 @@
+# Categories for GitHub's generated release notes, keyed by the labels in
+# .github/labels.json. A pull request without a listed label lands in "Other".
+changelog:
+  exclude:
+    labels: ["spec: skipped"]
+  categories:
+    - title: Features
+      labels: ["type: feature"]
+    - title: Fixes
+      labels: ["type: bug"]
+    - title: Maintenance
+      labels: ["type: task"]
+    - title: Dependencies
+      labels: ["dependencies"]
+    - title: Other
+      labels: ["*"]
