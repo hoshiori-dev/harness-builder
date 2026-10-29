@@ -67,3 +67,21 @@ Deno.test("check_plugin --footprint lists a client's files", () => {
     ".codex/config.toml",
   ]);
 });
+
+Deno.test("check_plugin accepts an entry whose spec an unarchived change proposes", () => {
+  const root = makeTree(fixturePlugin());
+  Deno.removeSync(join(root, "openspec/specs/skill/alpha/spec.md"));
+  writeTree(root, { "openspec/changes/add-alpha/specs/skill/alpha/spec.md": "# Spec Delta\n" });
+  const pending = runScript("check_plugin.ts", [], root);
+  assertEquals(pending.code, 0, pending.output);
+  writeTree(root, {
+    "openspec/changes/archive/2026-01-01-old/specs/skill/alpha/spec.md": "# Spec Delta\n",
+  });
+  Deno.removeSync(join(root, "openspec/changes/add-alpha"), { recursive: true });
+  const archivedOnly = runScript("check_plugin.ts", [], root);
+  assertEquals(archivedOnly.code, 1);
+  assertStringIncludes(
+    archivedOnly.output,
+    "openspec/specs/skill/alpha/spec.md: catalog-missing-spec",
+  );
+});

@@ -21,12 +21,14 @@ const LINK_RE = /\[[^\]]*\]\(([^)\s]+)\)/g;
 const findings = new Findings();
 const tracked = gitFiles(root);
 
+// This repository's own documents. Shipped skills under skills/ are excluded: they
+// describe the target project's commands, not this repository's recipes, and their
+// links are checked by check_skills.ts (skill-link, skill-link-escape).
 const docs = tracked.filter((p) =>
   p === "AGENTS.md" || p === "CLAUDE.md" || p === "README.md" || p === "README.en.md" ||
   p === "CONTRIBUTING.md" ||
   p.startsWith(".agents/knowledge/") && p.endsWith(".md") ||
   p.startsWith(".agents/skills/") && p.endsWith(".md") ||
-  p.startsWith("skills/") && p.endsWith(".md") ||
   p.startsWith("com.") && p.endsWith(".md")
 );
 
@@ -400,7 +402,7 @@ function skillTableNames(text: string): Set<string> {
   for (const line of text.split("\n")) {
     if (/^#{1,6}\s/.test(line)) inSection = /skills?|技能/i.test(line);
     if (!inSection) continue;
-    const m = line.match(/^\| \*{0,2}`?\[?([a-z0-9-]+)/);
+    const m = line.match(/^\| \*{0,2}\[?`?\[?([a-z0-9-]+)/);
     if (m && m[1] !== "skill") names.add(m[1]);
   }
   return names;

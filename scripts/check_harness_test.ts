@@ -57,8 +57,11 @@ Deno.test("check_harness reports broken links, unknown recipes, unreachable know
 function readme(lang: "zh" | "en", rows: string[]): string {
   const heading = lang === "zh" ? "## 技能" : "## Skills";
   return `# Fixture\n\n${heading}\n\n| Skill | Purpose |\n|---|---|\n${
-    rows.map((r) => `| [${r}](skills/${r}/) | x |`).join("\n")
-  }\n`;
+    // One row per link style the READMEs use: plain and code-formatted link text.
+    rows.map((r, i) =>
+      i % 2 ? `| [\`${r}\`](skills/${r}/SKILL.md) | x |` : `| [${r}](skills/${r}/) | x |`
+    )
+      .join("\n")}\n`;
 }
 
 Deno.test("check_harness mirrors the READMEs and the docs nav", () => {

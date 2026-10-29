@@ -38,7 +38,7 @@ lint:
 # Unit tests of the management scripts (Deno) and of the shipped Python assets (pytest, only once skills/ holds .py files).
 test:
     deno test --allow-read --allow-write --allow-run --allow-env
-    if compgen -G 'skills/*/*/*_test.py' >/dev/null; then uv run --no-project --python 3.12 --with pytest=={{ pytest_version }} pytest -q skills/; else echo "pytest: no Python tests under skills/"; fi
+    if compgen -G 'skills/*/*/*_test.py' >/dev/null; then uv run --no-project --python 3.12 --with pytest=={{ pytest_version }} pytest -q --import-mode=importlib skills/; else echo "pytest: no Python tests under skills/"; fi
 
 # Plugin package and client wiring consistency.
 validate:

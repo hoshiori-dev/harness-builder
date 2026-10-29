@@ -396,12 +396,14 @@ function checkCatalogs(skills: string[], _mcp: McpFile | null, agents: Map<strin
         fix: "write the catalog-level spec.md with the rules every entry follows.",
       });
     }
+    const proposed = proposedSpecs(catalog);
     for (const name of implemented) {
-      if (!specNames.includes(name)) {
+      if (!specNames.includes(name) && !proposed.has(name)) {
         findings.add({
           file: `openspec/specs/${catalog}/${name}/spec.md`,
           rule: "catalog-missing-spec",
-          problem: `${where.replace("<name>", name)} is implemented but has no spec.`,
+          problem: `${where.replace("<name>", name)} is implemented but has no spec, ` +
+            "neither archived nor proposed by an unarchived change.",
           fix: "add the spec through an OpenSpec change, or remove the implementation.",
         });
       }
@@ -417,4 +419,23 @@ function checkCatalogs(skills: string[], _mcp: McpFile | null, agents: Map<strin
       }
     }
   }
+}
+
+// Entries an unarchived change proposes: `openspec/changes/<id>/specs/<catalog>/<name>/spec.md`
+// outside `archive/`. In the combined shape an entry is implemented on the branch before the
+// change is archived, so its delta spec stands in for the main spec until the archive commit;
+// the `checks / spec-archived` gate keeps such a branch from merging.
+function proposedSpecs(catalog: string): Set<string> {
+  const changes = join(root, "openspec/changes");
+  const names = new Set<string>();
+  if (!isDirectory(changes)) return names;
+  for (const change of listDir(changes)) {
+    if (!change.isDirectory || change.name === "archive") continue;
+    const dir = join(changes, change.name, "specs", catalog);
+    if (!isDirectory(dir)) continue;
+    for (const entry of listDir(dir)) {
+      if (entry.isDirectory && exists(join(dir, entry.name, "spec.md"))) names.add(entry.name);
+    }
+  }
+  return names;
 }
