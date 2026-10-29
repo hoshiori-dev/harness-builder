@@ -19,5 +19,8 @@
     "claude-code",
     "codex",
     "antigravity"
+  ],
+  "agents": [
+    "./com.anthropic.claude-code/agents/harness-verifier.md"
   ]
 }
