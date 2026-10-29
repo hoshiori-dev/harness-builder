@@ -93,7 +93,7 @@ Deno.test("archived when no unarchived change remains and an archive is added", 
   assertEquals((await decide(removedOnly, null)).state, null);
 });
 
-Deno.test("a write-permission account adding spec: approved is recorded", async () => {
+Deno.test("a write-permission account adding spec:approved is recorded", async () => {
   const api = fake({ events: [approvedBy("maintainer")] });
   const d = await decide(api, approveEvent);
   assertEquals(d.state, APPROVED);
@@ -191,7 +191,7 @@ Deno.test("a record approves only the person whose adding of the label stands", 
   assertEquals((await decide(fake({ events: own, comments: [record] }), null)).state, APPROVED);
 });
 
-Deno.test("a person removing spec: approved, or a label without a record, means pending", async () => {
+Deno.test("a person removing spec:approved, or a label without a record, means pending", async () => {
   const hash = await packageHash([...ARCHIVE, ...CHANGE], ["add-thing"]);
   const record: Comment = {
     id: 7,
@@ -216,7 +216,7 @@ Deno.test("a person removing spec: approved, or a label without a record, means 
     null,
   );
   assertEquals(noRecord.state, PENDING);
-  assertEquals(labelPlan([APPROVED, "type: task"], noRecord), {
+  assertEquals(labelPlan([APPROVED, "type:task"], noRecord), {
     add: [PENDING],
     remove: [APPROVED],
   });
@@ -299,11 +299,11 @@ Deno.test("archiving is recognised whatever status the archive files carry", asy
 
 Deno.test("closed pull requests keep their labels; truncated trees are not decided", async () => {
   const closed = await decide(
-    fake({ pull: { state: "closed", labels: [ARCHIVED, "type: task"] } }),
+    fake({ pull: { state: "closed", labels: [ARCHIVED, "type:task"] } }),
     null,
   );
   assertEquals(closed.state, null);
   assertEquals(closed.leave, true);
-  assertEquals(labelPlan([ARCHIVED, "type: task"], closed), { add: [], remove: [] });
+  assertEquals(labelPlan([ARCHIVED, "type:task"], closed), { add: [], remove: [] });
   await assertRejects(() => decide(fake({ truncated: true }), null), Error, "truncated");
 });

@@ -53,3 +53,42 @@ Deno.test("check_harness reports broken links, unknown recipes, unreachable know
     ]
   ) assertStringIncludes(result.output, expected);
 });
+
+function readme(lang: "zh" | "en", rows: string[]): string {
+  const heading = lang === "zh" ? "## 技能" : "## Skills";
+  return `# Fixture\n\n${heading}\n\n| Skill | Purpose |\n|---|---|\n${
+    rows.map((r) => `| [${r}](skills/${r}/) | x |`).join("\n")
+  }\n`;
+}
+
+Deno.test("check_harness mirrors the READMEs and the docs nav", () => {
+  const files = harness();
+  files["README.md"] = readme("zh", ["alpha", "beta"]);
+  files["README.en.md"] = readme("en", ["alpha"]);
+  files["skills/alpha/SKILL.md"] = "---\nname: alpha\ndescription: x\n---\n";
+  files["skills/gamma/SKILL.md"] = "---\nname: gamma\ndescription: x\n---\n";
+  files["docs/index.md"] = "# Docs\n";
+  files["docs/guide.md"] = "# Guide\n";
+  files["docs/.nav.yml"] = "nav:\n  - index.md\n";
+  const root = makeTree(files);
+  gitInit(root);
+  const result = runScript("check_harness.ts", [], root);
+  assertEquals(result.code, 1, result.output);
+  for (
+    const expected of [
+      "README.en.md: readme-mirror: skill table lacks the row for beta",
+      "README.en.md: readme-mirror: does not link skills/beta/",
+      "README.md: readme-skill-table: skill table has no row for skills/gamma",
+      "README.en.md: readme-skill-table: skill table has no row for skills/gamma",
+      "docs/guide.md: doc-reachable",
+    ]
+  ) assertStringIncludes(result.output, expected);
+  writeTree(root, {
+    "README.en.md": "[中文](README.md)\n\n" + readme("en", ["alpha", "beta", "gamma"]),
+    "README.md": "[English](README.en.md)\n\n" + readme("zh", ["alpha", "beta", "gamma"]),
+    "skills/beta/SKILL.md": "---\nname: beta\ndescription: x\n---\n",
+    "docs/.nav.yml": "nav:\n  - index.md\n  - guide.md\n",
+  });
+  const fixed = runScript("check_harness.ts", [], root);
+  assertEquals(fixed.code, 0, fixed.output);
+});

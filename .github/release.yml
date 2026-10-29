@@ -2,14 +2,14 @@
 # .github/labels.json. A pull request without a listed label lands in "Other".
 changelog:
   exclude:
-    labels: ["spec: skipped"]
+    labels: ["spec:skipped"]
   categories:
     - title: Features
-      labels: ["type: feature"]
+      labels: ["type:feature"]
     - title: Fixes
-      labels: ["type: bug"]
+      labels: ["type:bug"]
     - title: Maintenance
-      labels: ["type: task"]
+      labels: ["type:task"]
     - title: Dependencies
       labels: ["dependencies"]
     - title: Other

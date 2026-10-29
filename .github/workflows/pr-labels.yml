@@ -1,5 +1,5 @@
 # Keeps the OpenSpec state label of every pull request current: one of
-# `spec: skipped`, `spec: pending`, `spec: approved`, `spec: archived`, or none
+# `spec:skipped`, `spec:pending`, `spec:approved`, `spec:archived`, or none
 # (.agents/knowledge/spec-workflow.md, gate 1). scripts/sync_pr_labels.ts
 # decides from the pull request's present state through the API and writes the
 # difference; `just pr-labels <n>` prints the same decision without writing.
@@ -28,7 +28,7 @@ permissions: {}
 
 # One group per pull request, runs serialized and every event kept: a running
 # run finishes, and `queue: max` holds the pending ones (up to 100) instead of
-# replacing them, so the run for a `labeled spec: approved` event is never
+# replacing them, so the run for a `labeled spec:approved` event is never
 # dropped behind a later label event. A record is written only by the run of
 # the event it belongs to, so an approval is never bound to the wrong commit.
 concurrency:
@@ -70,9 +70,9 @@ jobs:
           DISPATCH_NUMBER: ${{ inputs.number }}
         run: deno run --allow-read --allow-env --allow-run=gh scripts/sync_pr_labels.ts --apply
       # A script that could not start, or failed before its own error path,
-      # may leave spec: approved where it is wrong; this takes it off. A label
+      # may leave spec:approved where it is wrong; this takes it off. A label
       # that is not there is no failure.
-      - name: "Remove spec: approved after a failure"
+      - name: "Remove spec:approved after a failure"
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
@@ -84,7 +84,7 @@ jobs:
           [[ "${number}" =~ ^[0-9]+$ ]] || exit 0
           if ! output="$(gh api -X DELETE "repos/${REPO}/issues/${number}/labels/spec%3A%20approved" 2>&1)"; then
             case "${output}" in
-              *"HTTP 404"*) echo "spec: approved was not on the pull request." ;;
+              *"HTTP 404"*) echo "spec:approved was not on the pull request." ;;
               *) echo "${output}" >&2; exit 1 ;;
             esac
           fi

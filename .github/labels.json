@@ -1,14 +1,15 @@
 [
-  { "name": "type: bug", "color": "d73a4a", "description": "Something shipped does not behave as its spec says" },
-  { "name": "type: feature", "color": "0e8a16", "description": "New or changed behaviour of a shipped skill, server, or agent" },
-  { "name": "type: task", "color": "1d76db", "description": "Harness, tooling, documentation, or maintenance work" },
-  { "name": "area: skills", "color": "c5def5", "description": "skills/ and the skill catalog" },
-  { "name": "area: mcp", "color": "c5def5", "description": "mcp.json, bundled servers, and the mcp catalog" },
-  { "name": "area: agents", "color": "c5def5", "description": "Client agent files and the agent catalog" },
-  { "name": "area: harness", "color": "c5def5", "description": "AGENTS.md, knowledge, project skills, scripts, CI" },
-  { "name": "spec: pending", "color": "fbca04", "description": "Unarchived OpenSpec change awaiting the maintainer's approval (set by pr-labels)" },
-  { "name": "spec: approved", "color": "5319e7", "description": "Maintainer approved the OpenSpec change at the recorded commit; kept while unchanged" },
-  { "name": "spec: archived", "color": "006b75", "description": "The OpenSpec change is archived; the pull request may merge (set by pr-labels)" },
-  { "name": "spec: skipped", "color": "e4e669", "description": "Nothing to approve: no change touched, or every change sets skip_specs: true (pr-labels)" },
-  { "name": "dependencies", "color": "0366d6", "description": "Dependency or action version updates" }
+  {"name": "type:bug", "color": "d73a4a", "description": "Something shipped does not behave as its spec says"},
+  {"name": "type:feature", "color": "0e8a16", "description": "New or changed behaviour of a shipped skill or agent"},
+  {"name": "type:task", "color": "1d76db", "description": "Harness, tooling, documentation, or maintenance work"},
+  {"name": "area:skills", "color": "c5def5", "description": "skills/ and the skill catalog"},
+  {"name": "area:agents", "color": "c5def5", "description": "Client agent files and the agent catalog"},
+  {"name": "area:harness", "color": "c5def5", "description": "AGENTS.md, knowledge, project skills, scripts"},
+  {"name": "area:ci", "color": "c5def5", "description": "Workflows, composite actions, pre-commit hooks"},
+  {"name": "area:docs", "color": "c5def5", "description": "docs/ and the Zensical documentation site"},
+  {"name": "spec:pending", "color": "fbca04", "description": "Unarchived OpenSpec change awaiting the maintainer's approval (set by pr-labels)"},
+  {"name": "spec:approved", "color": "5319e7", "description": "Maintainer approved the OpenSpec change at the recorded commit; kept while unchanged"},
+  {"name": "spec:archived", "color": "006b75", "description": "The OpenSpec change is archived; the pull request may merge (set by pr-labels)"},
+  {"name": "spec:skipped", "color": "e4e669", "description": "Nothing to approve: no change touched, or every change sets skip_specs: true (pr-labels)"},
+  {"name": "dependencies", "color": "0366d6", "description": "Dependency or action version updates"}
 ]

@@ -36,6 +36,22 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: skills-check
+        name: shipped skills pass the quality bar (just skills-check)
+        entry: just skills-check
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: ruff-check
+        name: ruff check (shipped Python assets)
+        entry: uvx ruff@0.15.0 check
+        language: system
+        files: ^skills/.*\.py$
+      - id: ruff-format
+        name: ruff format --check (shipped Python assets)
+        entry: uvx ruff@0.15.0 format --check
+        language: system
+        files: ^skills/.*\.py$
       - id: betterleaks
         name: betterleaks (secrets in staged files)
         entry: betterleaks dir --no-banner --redact

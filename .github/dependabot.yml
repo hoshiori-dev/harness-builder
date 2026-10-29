@@ -10,4 +10,4 @@ updates:
       interval: weekly
     commit-message:
       prefix: ci
-    labels: ["dependencies", "type: task"]
+    labels: ["dependencies", "type:task"]

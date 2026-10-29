@@ -36,6 +36,23 @@ export class Findings {
   }
 }
 
+export interface Warning {
+  file: string;
+  line?: number;
+  rule: string;
+  problem: string;
+  fix: string;
+}
+
+/**
+ * A warning is advice, not a finding: it goes to stderr and never changes the
+ * exit code, so a script that only warns still ends `ok`.
+ */
+export function warn(w: Warning): void {
+  const where = w.line === undefined ? w.file : `${w.file}:${w.line}`;
+  console.error(`WARN ${where}: ${w.rule} — ${w.problem} Fix: ${w.fix}`);
+}
+
 /** Unexpected failure of the script itself: print and exit 2. */
 export function fail(message: string): never {
   console.error(`error: ${message}`);

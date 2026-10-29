@@ -53,6 +53,7 @@ jobs:
       - uses: ./.github/actions/setup-tools
       - run: just gen --check
       - run: just validate
+      - run: just skills-check
       - run: just harness-check
   spec:
     name: checks / spec
@@ -67,13 +68,29 @@ jobs:
         with:
           deno-cache: "false"
       - run: just spec-check
+  docs:
+    name: checks / docs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-tools
+        with:
+          deno-cache: "false"
+          pre-commit: "false"
+          openspec: "false"
+          betterleaks: "false"
+      - run: just docs-check
   gate:
     # The aggregator for this workflow; a ruleset requires it together with
     # `secrets / scan` and `checks / pr`. A skipped job reports success, so
     # this job fails on failure or cancellation only.
     name: checks / gate
     if: always()
-    needs: [lint, test, plugin, spec]
+    needs: [lint, test, plugin, spec, docs]
     runs-on: ubuntu-latest
     steps:
       - name: All required jobs succeeded

@@ -10,6 +10,12 @@ export PAGER := "cat"
 export GIT_PAGER := "cat"
 export GIT_TERMINAL_PROMPT := "0"
 
+# Pinned versions of the Python tools the recipes run through uv. The dev
+# container (.devcontainer/setup.sh) and CI read them from here.
+ruff_version := "0.15.0"
+pytest_version := "9.0.2"
+zensical_version := "0.0.73"
+
 # List recipes.
 default:
     @just --list
@@ -22,21 +28,27 @@ gen *flags:
 fmt:
     deno fmt
 
-# Formatting, lint, and type checks for all Deno code.
+# Formatting, lint, and type checks for the management code (Deno) and the shipped Python assets (ruff, only once skills/ holds .py files).
 lint:
     deno fmt --check
     deno lint
     deno check scripts/*.ts scripts/lib/*.ts
+    if compgen -G 'skills/*/*/*.py' >/dev/null; then uvx ruff@{{ ruff_version }} check skills/ && uvx ruff@{{ ruff_version }} format --check skills/; else echo "ruff: no Python under skills/"; fi
 
-# Unit tests of the management scripts.
+# Unit tests of the management scripts (Deno) and of the shipped Python assets (pytest, only once skills/ holds .py files).
 test:
     deno test --allow-read --allow-write --allow-run --allow-env
+    if compgen -G 'skills/*/*/*_test.py' >/dev/null; then uv run --no-project --python 3.12 --with pytest=={{ pytest_version }} pytest -q skills/; else echo "pytest: no Python tests under skills/"; fi
 
 # Plugin package and client wiring consistency.
 validate:
     deno run --allow-read --allow-run=git scripts/check_plugin.ts
 
-# Harness integrity: links, recipes, budgets, skill frontmatter, symlinks.
+# Shipped skills: frontmatter budgets, structure, links, reachability, script hygiene, shared blocks, layer ownership.
+skills-check:
+    deno run --allow-read --allow-run=git scripts/check_skills.ts
+
+# Harness integrity: links, recipes, budgets, skill frontmatter, symlinks, README mirror, docs nav.
 harness-check:
     deno run --allow-read --allow-run=git,just scripts/check_harness.ts
 
@@ -64,11 +76,22 @@ secrets-commits range="":
 pre-commit:
     pre-commit run --all-files
 
-# The Deno-only checks; the push workflow runs them on every branch but main.
-check-fast: (gen "--check") lint validate harness-check test
+# Build the documentation site (Zensical, strict: any warning fails) into site/.
+docs-build:
+    uvx --python 3.12 --from zensical=={{ zensical_version }} zensical build --strict --clean
+
+# Serve the documentation site locally with live reload.
+docs-serve:
+    uvx --python 3.12 --from zensical=={{ zensical_version }} zensical serve
+
+# The documentation check CI runs: a strict build.
+docs-check: docs-build
+
+# The checks that need no network beyond uv's cache; the push workflow runs them on every branch but main.
+check-fast: (gen "--check") lint validate skills-check harness-check test
 
 # Everything CI runs.
-check: check-fast spec-check secrets
+check: check-fast spec-check docs-check secrets
 
 # Validate the package with the installed client CLIs (local only; CI has no clients). Claude runs non-strict: this repository's root CLAUDE.md draws a warning.
 clients-validate:

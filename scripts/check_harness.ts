@@ -22,7 +22,8 @@ const findings = new Findings();
 const tracked = gitFiles(root);
 
 const docs = tracked.filter((p) =>
-  p === "AGENTS.md" || p === "CLAUDE.md" || p === "README.md" || p === "CONTRIBUTING.md" ||
+  p === "AGENTS.md" || p === "CLAUDE.md" || p === "README.md" || p === "README.en.md" ||
+  p === "CONTRIBUTING.md" ||
   p.startsWith(".agents/knowledge/") && p.endsWith(".md") ||
   p.startsWith(".agents/skills/") && p.endsWith(".md") ||
   p.startsWith("skills/") && p.endsWith(".md") ||
@@ -37,6 +38,8 @@ checkSkillFrontmatter();
 checkClaudeSkillLinks();
 checkSymlinks();
 checkOpenSpecTarget();
+checkDocsReachable();
+checkReadmes();
 Deno.exit(findings.report("check_harness"));
 
 function checkEntrypoint() {
@@ -276,4 +279,129 @@ function checkOpenSpecTarget() {
         "regenerate the OpenSpec skills with `openspec init --tools agents --force`; never run `openspec update` here.",
     });
   }
+}
+
+// Every page of the documentation site is reachable from its navigation file;
+// a page outside the nav is published nowhere and read by nobody.
+function checkDocsReachable() {
+  const pages = tracked.filter((p) => p.startsWith("docs/") && p.endsWith(".md"));
+  if (pages.length === 0) return;
+  const navPath = "docs/.nav.yml";
+  if (!exists(join(root, navPath))) {
+    findings.add({
+      file: navPath,
+      rule: "doc-reachable",
+      problem: "docs/ holds pages but no navigation file.",
+      fix: "create docs/.nav.yml (awesome-nav) listing every page.",
+    });
+    return;
+  }
+  const nav = readText(join(root, navPath));
+  for (const page of pages) {
+    const rel = page.slice("docs/".length);
+    if (rel === "index.md") continue;
+    if (!nav.includes(rel)) {
+      findings.add({
+        file: page,
+        rule: "doc-reachable",
+        problem: `not listed in ${navPath}.`,
+        fix: "add the page to the nav or delete it.",
+      });
+    }
+  }
+}
+
+// README.md (Chinese) and README.en.md mirror each other: the skill table of
+// each lists the same skills, every shipped skill appears in both, and the
+// relative links agree (the cross-links between the two READMEs excepted).
+function checkReadmes() {
+  const readmes = ["README.md", "README.en.md"];
+  const shipped = tracked.filter((p) => /^skills\/[^/]+\/SKILL\.md$/.test(p)).map((p) =>
+    p.split("/")[1]
+  );
+  const tables = new Map<string, Set<string>>();
+  const links = new Map<string, Set<string>>();
+  for (const readme of readmes) {
+    if (!exists(join(root, readme))) {
+      if (shipped.length > 0 || exists(join(root, readmes[0]))) {
+        findings.add({
+          file: readme,
+          rule: "readme-mirror",
+          problem: "file is missing.",
+          fix: "write it as the translation of the other README, same skill table.",
+        });
+      }
+      continue;
+    }
+    const text = readText(join(root, readme));
+    tables.set(readme, skillTableNames(text));
+    links.set(
+      readme,
+      new Set(
+        [...text.matchAll(LINK_RE)].map((m) => m[1]).filter((t) =>
+          !/^(https?:|mailto:|#)/.test(t) && !/^README(\.[a-z]{2})?\.md$/.test(t)
+        ),
+      ),
+    );
+  }
+  if (tables.size === 2) {
+    const [a, b] = readmes;
+    for (const name of tables.get(a)!) {
+      if (!tables.get(b)!.has(name)) {
+        findings.add({
+          file: b,
+          rule: "readme-mirror",
+          problem: `skill table lacks the row for ${name}, which ${a} lists.`,
+          fix: `add the ${name} row so both READMEs describe the same skills.`,
+        });
+      }
+    }
+    for (const name of tables.get(b)!) {
+      if (!tables.get(a)!.has(name)) {
+        findings.add({
+          file: a,
+          rule: "readme-mirror",
+          problem: `skill table lacks the row for ${name}, which ${b} lists.`,
+          fix: `add the ${name} row so both READMEs describe the same skills.`,
+        });
+      }
+    }
+    for (const target of links.get(a)!) {
+      if (!links.get(b)!.has(target)) {
+        findings.add({
+          file: b,
+          rule: "readme-mirror",
+          problem: `does not link ${target}, which ${a} links.`,
+          fix: "keep the relative links of both READMEs identical.",
+        });
+      }
+    }
+  }
+  for (const readme of readmes) {
+    const names = tables.get(readme);
+    if (names === undefined) continue;
+    for (const skill of shipped) {
+      if (!names.has(skill)) {
+        findings.add({
+          file: readme,
+          rule: "readme-skill-table",
+          problem: `skill table has no row for skills/${skill}.`,
+          fix: `add a row naming ${skill} with its one-line purpose.`,
+        });
+      }
+    }
+  }
+}
+
+/** Skill names from table rows under the first heading that mentions skills (English or Chinese). */
+function skillTableNames(text: string): Set<string> {
+  const names = new Set<string>();
+  let inSection = false;
+  for (const line of text.split("\n")) {
+    if (/^#{1,6}\s/.test(line)) inSection = /skills?|技能/i.test(line);
+    if (!inSection) continue;
+    const m = line.match(/^\| \*{0,2}`?\[?([a-z0-9-]+)/);
+    if (m && m[1] !== "skill") names.add(m[1]);
+  }
+  return names;
 }

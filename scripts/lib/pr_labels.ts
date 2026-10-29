@@ -4,25 +4,25 @@
 // tests a fake.
 //
 // Exactly one of these labels, or none, belongs on a pull request:
-//   spec: skipped   no file under openspec/changes/ is touched
-//   spec: pending   the head holds an unarchived change without a valid approval
-//   spec: approved  a write-permission account added it while an unarchived
+//   spec:skipped   no file under openspec/changes/ is touched
+//   spec:pending   the head holds an unarchived change without a valid approval
+//   spec:approved  a write-permission account added it while an unarchived
 //                   change was at the head, and the approval package (every
 //                   blob under the unarchived changes) still hashes the same
-//   spec: archived  no unarchived change remains and this PR adds an archived one
+//   spec:archived  no unarchived change remains and this PR adds an archived one
 //
 // The approval is recorded in one comment (marker, status, commit, account,
-// package hash). A later run keeps `spec: approved` only while the record is
+// package hash). A later run keeps `spec:approved` only while the record is
 // not withdrawn and the hash at the head equals the recorded one; otherwise the
-// label falls back to `spec: pending` and the record is marked withdrawn. Every
-// path the code cannot decide ends without `spec: approved`.
+// label falls back to `spec:pending` and the record is marked withdrawn. Every
+// path the code cannot decide ends without `spec:approved`.
 
 import { parse as parseYaml } from "@std/yaml";
 
-export const SKIPPED = "spec: skipped";
-export const PENDING = "spec: pending";
-export const APPROVED = "spec: approved";
-export const ARCHIVED = "spec: archived";
+export const SKIPPED = "spec:skipped";
+export const PENDING = "spec:pending";
+export const APPROVED = "spec:approved";
+export const ARCHIVED = "spec:archived";
 export const STATE_LABELS = [SKIPPED, PENDING, APPROVED, ARCHIVED] as const;
 export type StateLabel = typeof STATE_LABELS[number];
 
@@ -160,7 +160,7 @@ export function parseRecord(comment: Comment): Record | null {
   return { id: comment.id, status, commit, by, hash };
 }
 
-/** The latest adding of `spec: approved` by a person, unless a person removed it later. */
+/** The latest adding of `spec:approved` by a person, unless a person removed it later. */
 export function standingApproval(events: LabelEvent[]): LabelEvent | undefined {
   const human = events.filter((e) => e.label === APPROVED && !isBot(e.actor));
   const latestAdd = human.filter((e) => e.event === "labeled").sort((a, b) => b.id - a.id)[0];
@@ -213,7 +213,7 @@ export async function decide(api: Api, event: Event | null): Promise<Decision> {
   const approval = standingApproval(await api.labelEvents());
   const list = changes.join(", ");
 
-  // This run was started by a person adding spec: approved: record it, or say why not.
+  // This run was started by a person adding spec:approved: record it, or say why not.
   if (event && event.action === "labeled" && event.label === APPROVED && !isBot(event.sender)) {
     const refusal = await refuse(api, event, pull, approval);
     if (refusal === null) {
@@ -235,7 +235,7 @@ export async function decide(api: Api, event: Event | null): Promise<Decision> {
     };
   }
 
-  // Every other run: keep spec: approved only while the record still holds.
+  // Every other run: keep spec:approved only while the record still holds.
   const problems: string[] = [];
   if (!approval) problems.push(`no standing adding of ${APPROVED} by a person`);
   if (!record) problems.push("no approval record comment");

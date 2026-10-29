@@ -12,7 +12,7 @@
 // Everything is read and written through `gh api`; nothing of the pull request
 // is checked out or run. Values the pull request controls reach `gh api` only as
 // request bodies or percent-encoded path segments. On an error after the labels
-// were read, `spec: approved` is replaced by `spec: pending`: an undecidable
+// were read, `spec:approved` is replaced by `spec:pending`: an undecidable
 // state never keeps an approval.
 import {
   Api,

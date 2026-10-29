@@ -1,12 +1,12 @@
 name: Feature
-description: New or changed behaviour of a skill, MCP server, or agent.
-labels: ["type: feature"]
+description: New or changed behaviour of a skill or agent.
+labels: ["type:feature"]
 body:
   - type: dropdown
     id: catalog
     attributes:
       label: Catalog
-      options: ["skill", "mcp", "agent", "several"]
+      options: ["skill", "agent", "several"]
     validations:
       required: true
   - type: textarea

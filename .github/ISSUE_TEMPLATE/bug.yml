@@ -1,6 +1,6 @@
 name: Bug
-description: A shipped skill, MCP server, or agent does not behave as its spec says.
-labels: ["type: bug"]
+description: A shipped skill or agent does not behave as its spec says.
+labels: ["type:bug"]
 body:
   - type: dropdown
     id: client

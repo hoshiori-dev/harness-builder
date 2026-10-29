@@ -1,6 +1,6 @@
 name: Task
 description: Harness, tooling, documentation, or maintenance work that changes no shipped behaviour.
-labels: ["type: task", "area: harness"]
+labels: ["type:task", "area:harness"]
 body:
   - type: textarea
     id: goal
