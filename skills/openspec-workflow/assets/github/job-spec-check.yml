@@ -1,0 +1,77 @@
+# Two jobs for the project's existing checks workflow (pull_request plus push
+# to the default branch). `spec` joins the gate's `needs:`; the ruleset
+# requires `checks / spec-archived` besides the gate.
+  spec:
+    name: checks / spec
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      archived: ${{ steps.verdict.outputs.archived }}
+    env:
+      OPENSPEC_NO_UPDATE_CHECK: "1"
+      DO_NOT_TRACK: "1"
+    steps:
+      # The read-only pull_request trigger: checking out the head is safe here.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install the pinned OpenSpec CLI
+        run: "{{INSTALL_OPENSPEC}}" # CONFIGURE: the project's own command that installs its pinned OpenSpec CLI
+      # Strict validation, then the verdict. An invalid tree or a script error
+      # fails the job; an unarchived related change does not: it only sets
+      # archived=false, so the next job withholds the required check.
+      - id: verdict
+        name: Validate strictly and decide the archive verdict
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != "pull_request" ]; then
+            # The default branch never holds an unarchived change. Reporting the
+            # required name here lets the platform observe it before a ruleset needs it.
+            python3 scripts/spec_changes.py check --all --full
+            echo "archived=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          flag=""
+          if [ "$DRAFT" = "true" ]; then flag="--draft"; fi
+          status=0
+          python3 scripts/spec_changes.py check --base "$BASE" --head "$HEAD" $flag --full > "$RUNNER_TEMP/verdict.json" || status=$?
+          cat "$RUNNER_TEMP/verdict.json"
+          verdict=$(jq -r '.verdict' "$RUNNER_TEMP/verdict.json")
+          if [ "$status" -ne 0 ] && [ "$verdict" != "awaiting-archive" ]; then
+            echo "::error::spec_changes.py check ended with exit $status and verdict $verdict; fix what it reports."
+            exit 1
+          fi
+          if [ "$(jq '.unarchived | length' "$RUNNER_TEMP/verdict.json")" = "0" ]; then
+            echo "archived=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Unarchived related change(s): $(jq -r '.unarchived | join(", ")' "$RUNNER_TEMP/verdict.json"). The required check stays withheld until the archive commit."
+            echo "archived=false" >> "$GITHUB_OUTPUT"
+          fi
+  # Carries the required check. It succeeds either way, but reports the required
+  # name only when no related change is unarchived; until then nothing reports
+  # `checks / spec-archived`, the merge stays blocked, and nothing is red. A draft
+  # is withheld too: a success reported on a draft's head would still count once
+  # it is marked ready without a new commit.
+  spec-archived:
+    name: ${{ needs.spec.outputs.archived == 'true' && 'checks / spec-archived' || 'checks / awaiting-archive' }}
+    needs: spec
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - env:
+          ARCHIVED: ${{ needs.spec.outputs.archived }}
+        run: |
+          if [ "$ARCHIVED" = "true" ]; then
+            echo "Every related OpenSpec change is archived."
+          else
+            echo "Waiting for the archive commit; the checks / spec job names the unarchived changes."
+          fi

@@ -1,0 +1,5 @@
+[
+  {"name": "spec:pending", "color": "fbca04", "description": "An unarchived OpenSpec change awaits approval of its package (set by spec-labels)"},
+  {"name": "spec:approved", "color": "5319e7", "description": "Added by a person with write permission; kept while the recorded package is unchanged"},
+  {"name": "spec:archived", "color": "006b75", "description": "Every related OpenSpec change is archived (set by spec-labels)"}
+]

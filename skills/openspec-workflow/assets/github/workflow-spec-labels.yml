@@ -1,0 +1,118 @@
+# Keeps the OpenSpec state label of every pull request current: spec:pending,
+# spec:approved, spec:archived, or none. A person with write permission adds
+# spec:approved; this workflow records that approval (commit, account, package
+# hash) in one comment and keeps the label only while the package hashes the
+# same. scripts/spec_changes.py decides; this file only applies its plan.
+#
+# pull_request_target runs the default branch's copy of this file and of the
+# script with a token that may label a fork's pull request. That is safe only
+# within these bounds: the checkout is the default branch; the head is read
+# through the REST API as data by `snapshot`, never fetched, checked out,
+# installed, or run; what the pull request controls reaches the shell only
+# through env; the token is set on the steps that call the API.
+name: spec-labels
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions: {}
+
+concurrency:
+  group: spec-labels-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  labels:
+    name: spec / labels
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      REPO: ${{ github.repository }}
+      N: ${{ github.event.pull_request.number }}
+      ACTION: ${{ github.event.action }}
+      LABEL: ${{ github.event.label.name }}
+      SENDER: ${{ github.event.sender.login }}
+      EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Snapshot the head through the API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          approver=()
+          if [ "$ACTION" = "labeled" ] && [ "$LABEL" = "spec:approved" ] && [[ "$SENDER" != *"[bot]" ]]; then
+            approver=(--approver "$SENDER")
+          fi
+          python3 scripts/spec_changes.py snapshot --repo "$REPO" --pr "$N" "${approver[@]}" --output "$RUNNER_TEMP/snapshot.json"
+      - name: Plan the labels and the record
+        run: |
+          set -euo pipefail
+          event=()
+          if [ "$ACTION" = "labeled" ] && [ "$LABEL" = "spec:approved" ] && [[ "$SENDER" != *"[bot]" ]]; then
+            event=(--approved-by "$SENDER" --approved-at "$EVENT_HEAD")
+          fi
+          python3 scripts/spec_changes.py labels --snapshot "$RUNNER_TEMP/snapshot.json" "${event[@]}" --full > "$RUNNER_TEMP/plan.json"
+          cat "$RUNNER_TEMP/plan.json"
+      - name: Apply the plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          plan="$RUNNER_TEMP/plan.json"
+          # The plan may name only the fixed taxonomy; anything else means the script was changed, so stop.
+          allowed() {
+            case "$1" in
+              "spec:pending"|"spec:approved"|"spec:archived") ;;
+              *) echo "refusing unexpected label: $1" >&2; exit 1 ;;
+            esac
+          }
+          # The record first: a label without its record is repaired by the next run,
+          # but spec:approved written before a failed record would stand unvouched.
+          if [ "$(jq -r '.record != null' "$plan")" = "true" ]; then
+            jq -r '.record.body' "$plan" > "$RUNNER_TEMP/body.md"
+            id=$(jq -r '.record.id // ""' "$plan")
+            if [[ "$id" =~ ^[0-9]+$ ]]; then
+              gh api -X PATCH "repos/$REPO/issues/comments/$id" -F "body=@$RUNNER_TEMP/body.md" > /dev/null
+            else
+              gh api -X POST "repos/$REPO/issues/$N/comments" -F "body=@$RUNNER_TEMP/body.md" > /dev/null
+            fi
+          fi
+          # Lists are written to files before the loops, so a jq failure fails the step.
+          jq -r '.remove[]' "$plan" > "$RUNNER_TEMP/remove.txt"
+          jq -r '.add[]' "$plan" > "$RUNNER_TEMP/add.txt"
+          while IFS= read -r label; do
+            allowed "$label"
+            encoded=$(jq -rn --arg l "$label" '$l | @uri')
+            # An absent label answers 404, which is no failure; anything else is.
+            if ! err=$(gh api -X DELETE "repos/$REPO/issues/$N/labels/$encoded" 2>&1 > /dev/null); then
+              case "$err" in
+                *"HTTP 404"*) ;;
+                *) printf '%s\n' "$err" >&2; exit 1 ;;
+              esac
+            fi
+          done < "$RUNNER_TEMP/remove.txt"
+          while IFS= read -r label; do
+            allowed "$label"
+            gh api -X POST "repos/$REPO/issues/$N/labels" -f "labels[]=$label" > /dev/null
+          done < "$RUNNER_TEMP/add.txt"
+      # An undecidable state never keeps an approval.
+      - name: Remove spec:approved after a failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! err=$(gh api -X DELETE "repos/$REPO/issues/$N/labels/spec%3Aapproved" 2>&1 > /dev/null); then
+            case "$err" in
+              *"HTTP 404"*) echo "spec:approved was not on the pull request." ;;
+              *) printf '%s\n' "$err" >&2; exit 1 ;;
+            esac
+          fi

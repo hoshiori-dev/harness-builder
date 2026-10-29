@@ -1,0 +1,120 @@
+# OpenSpec merge request jobs. Include from .gitlab-ci.yml (include: local:)
+# and add a `spec` stage. scripts/spec_changes.py is the project's own copy.
+# No job pushes; archiving is a person's command on the branch.
+
+variables:
+  GIT_DEPTH: "0"
+  OPENSPEC_NO_UPDATE_CHECK: "1"
+  DO_NOT_TRACK: "1"
+
+.spec-base:
+  image: "{{CI_IMAGE}}" # CONFIGURE: an image with bash, git, python3 (3.10+), node, curl, and jq
+  stage: spec
+
+# Strict validation on every merge request pipeline and on the default branch.
+# An unarchived change is only a warning here; spec:archive below blocks the merge.
+spec:check:
+  extends: .spec-base
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - "{{INSTALL_OPENSPEC}}" # CONFIGURE: the project's own command that installs its pinned OpenSpec CLI
+    - |
+      if [ -n "${CI_MERGE_REQUEST_IID:-}" ]; then
+        python3 scripts/spec_changes.py check --base "$CI_MERGE_REQUEST_DIFF_BASE_SHA" --head "$CI_COMMIT_SHA" --draft --full
+      else
+        python3 scripts/spec_changes.py check --all --full
+      fi
+
+# The withheld check. While the merge request's tree holds an unarchived change
+# this job is created as a blocking manual job: the pipeline shows "blocked",
+# nothing is red, and "Pipelines must succeed" keeps the merge closed. Running it
+# by hand fails it, so the button is no bypass. The archive commit starts a
+# pipeline without this job.
+spec:archive:
+  extends: .spec-base
+  stage: .post
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      exists:
+        - "openspec/changes/*/.openspec.yaml"
+      when: manual
+      allow_failure: false
+  script:
+    - python3 scripts/spec_changes.py check --base "$CI_MERGE_REQUEST_DIFF_BASE_SHA" --head "$CI_COMMIT_SHA" --no-validate --full
+
+# Keeps spec:pending | spec:approved | spec:archived on every open merge request
+# into the default branch. It runs only in a pipeline on the default branch (a
+# pipeline schedule, or Run pipeline on that branch), so this configuration and
+# scripts/spec_changes.py are the base's own: a merge request pipeline runs the
+# request's configuration and head, and must never hold SPEC_LABELS_TOKEN. Each
+# head is fetched as git objects and read by the script with git plumbing; it is
+# never checked out, installed, or run. The token is a project access token
+# (Reporter role, api scope), masked and protected.
+spec:labels:
+  extends: .spec-base
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+  script:
+    - |
+      set -euo pipefail
+      if [ -z "${SPEC_LABELS_TOKEN:-}" ]; then echo "SPEC_LABELS_TOKEN is not set: create it (see the job comment)." >&2; exit 1; fi
+      auth="PRIVATE-TOKEN: $SPEC_LABELS_TOKEN"
+      project="$CI_API_V4_URL/projects/$CI_PROJECT_ID"
+      me=$(curl -fsS -H "$auth" "$CI_API_V4_URL/user" | jq -r '.username')
+      curl -fsS -H "$auth" --get --data-urlencode "target_branch=$CI_DEFAULT_BRANCH" "$project/merge_requests?state=opened&per_page=100" > requests.json
+      if [ "$(jq 'length' requests.json)" -ge 100 ]; then
+        echo "100 or more open merge requests: page through them before labelling." >&2; exit 1
+      fi
+      for iid in $(jq -r '.[].iid' requests.json); do
+        api="$project/merge_requests/$iid"
+        curl -fsS -H "$auth" "$api" > request.json
+        base=$(jq -r '.diff_refs.base_sha' request.json)
+        head=$(jq -r '.sha' request.json)
+        # Objects only: FETCH_HEAD is read with git plumbing, never checked out.
+        git fetch --quiet --no-tags origin "refs/merge-requests/$iid/head"
+        if [ "$(git rev-parse FETCH_HEAD)" != "$head" ]; then echo "!$iid moved while it was read; the next run labels it." >&2; continue; fi
+        args=(--base "$base" --head "$head" --current "$(jq -r '.labels | join(",")' request.json)" --full)
+        # The latest approval record note written by the token's account, or null.
+        curl -fsS -H "$auth" "$api/notes?per_page=100&sort=desc&order_by=created_at" > notes.json
+        jq --arg me "$me" '[.[] | select(.author.username == $me and (.body | startswith("<!-- spec-approval-record -->")))][0]
+          | if . == null then null else ({id: .id} + (.body | capture("```json\n(?<j>[^`]+)\n```").j | fromjson)) end' notes.json > record.json
+        args+=(--record record.json)
+        # The latest adding of spec:approved, and whether its author is a Maintainer or Owner.
+        curl -fsS -H "$auth" "$api/resource_label_events?per_page=100" > events.json
+        if [ "$(jq 'length' events.json)" -ge 100 ]; then
+          echo "!$iid has 100 or more label events: page through resource_label_events before deciding." >&2; exit 1
+        fi
+        jq '[.[] | select(.action == "add" and .label.name == "spec:approved")] | last' events.json > approval.json
+        if [ "$(jq -r 'type' approval.json)" = "object" ]; then
+          uid=$(jq -r '.user.id' approval.json)
+          code=$(curl -sS -o member.json -w '%{http_code}' -H "$auth" "$project/members/all/$uid")
+          case "$code" in
+            200) level=$(jq -r '.access_level' member.json) ;;
+            404) level=0 ;;
+            *) echo "members API answered HTTP $code" >&2; exit 1 ;;
+          esac
+          permission=read
+          if [ "$level" -ge 40 ]; then permission=write; fi
+          args+=(--approved-by "$(jq -r '.user.username' approval.json)" --approval-id "gitlab-$(jq -r '.id' approval.json)" --permission "$permission")
+        fi
+        python3 scripts/spec_changes.py labels "${args[@]}" > plan.json
+        echo "!$iid:"; cat plan.json
+        for label in $(jq -r '.add[], .remove[]' plan.json); do
+          case "$label" in
+            "spec:pending"|"spec:approved"|"spec:archived") ;;
+            *) echo "refusing unexpected label: $label" >&2; exit 1 ;;
+          esac
+        done
+        # The record first, as on GitHub.
+        if [ "$(jq -r '.record != null' plan.json)" = "true" ]; then
+          jq '{body: .record.body}' plan.json > note.json
+          id=$(jq -r '.record.id // ""' plan.json)
+          if [[ "$id" =~ ^[0-9]+$ ]]; then method=PUT; url="$api/notes/$id"; else method=POST; url="$api/notes"; fi
+          curl -fsS -X "$method" -H "$auth" -H "Content-Type: application/json" --data @note.json "$url" > /dev/null
+        fi
+        curl -fsS -X PUT -H "$auth" \
+          --data-urlencode "add_labels=$(jq -r '.add | join(",")' plan.json)" \
+          --data-urlencode "remove_labels=$(jq -r '.remove | join(",")' plan.json)" "$api" > /dev/null
+      done
