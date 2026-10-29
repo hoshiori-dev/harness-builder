@@ -1,0 +1,2 @@
+# Session handoff and scratch notes: they carry logs and credentials, never commit them.
+.agents/handoff/
