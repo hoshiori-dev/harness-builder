@@ -1,0 +1,91 @@
+# The project's checks, as .gitlab-ci.yml. Every job runs a recipe that also
+# runs locally; `just check` is the union. One pipeline per change: merge
+# request pipelines, and branch pipelines only where no merge request is open.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+stages: [check, gate]
+
+include:
+  - local: .gitlab/ci/secret.yml
+
+default:
+  image: python:3.12-slim # CONFIGURE: the ecosystem image, pinned by digest (@sha256:...) once chosen
+  interruptible: true
+
+# Each check job leaves a marker only when it succeeds; the gate counts them.
+.check:
+  stage: check
+  before_script:
+    - pip install --quiet rust-just==1.59.0 # CONFIGURE: install the project's tools
+  after_script: []
+  artifacts:
+    paths: [.gate/]
+    when: on_success
+    expire_in: 1 day
+
+format:
+  extends: .check
+  script:
+    - just fmt-check
+    - mkdir -p .gate && touch ".gate/$CI_JOB_NAME.ok"
+
+lint:
+  extends: .check
+  script:
+    - just lint
+    - mkdir -p .gate && touch ".gate/$CI_JOB_NAME.ok"
+
+typecheck:
+  extends: .check
+  script:
+    - just typecheck
+    - mkdir -p .gate && touch ".gate/$CI_JOB_NAME.ok"
+
+test:
+  extends: .check
+  script:
+    - just test
+    - mkdir -p .gate && touch ".gate/$CI_JOB_NAME.ok"
+
+boundaries:
+  extends: .check
+  script:
+    - just boundaries
+    - mkdir -p .gate && touch ".gate/$CI_JOB_NAME.ok"
+
+# harness:
+#   The harness self-check job, delivered by the layer owning entropy.
+#   Add it to the gate's needs and GATE_JOBS when it lands.
+
+# Fails unless every listed job left its marker: a failed, cancelled, or
+# skipped job leaves none. `optional: true` keeps the pipeline valid when a
+# rule leaves a job out; the gate then fails and names it.
+gate:
+  stage: gate
+  when: always
+  needs:
+    - { job: format, optional: true, artifacts: true }
+    - { job: lint, optional: true, artifacts: true }
+    - { job: typecheck, optional: true, artifacts: true }
+    - { job: test, optional: true, artifacts: true }
+    - { job: boundaries, optional: true, artifacts: true }
+    - { job: secret-scan, optional: true, artifacts: true }
+  variables:
+    GATE_JOBS: "format lint typecheck test boundaries secret-scan"
+  script:
+    - |
+      missing=""
+      for job in $GATE_JOBS; do
+        [ -f ".gate/$job.ok" ] || missing="$missing $job"
+      done
+      if [ -n "$missing" ]; then
+        echo "Gate failed; these jobs did not succeed (failed, cancelled, or skipped):$missing."
+        echo "Open each job's log and fix it; do not skip a job or weaken this gate."
+        exit 1
+      fi
+      echo "All needed jobs succeeded."

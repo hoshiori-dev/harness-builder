@@ -1,0 +1,35 @@
+# Runs on every commit, agent checkpoints included. Budget: seconds; slower
+# checks run in CI and in `just check`. The secret scan never leaves this
+# file and is never skipped with --no-verify. Light holds only the first
+# two hooks; add no hook the user did not confirm.
+repos:
+  - repo: local
+    hooks:
+      - id: secret-scan
+        name: secret scan (betterleaks, staged files)
+        entry: betterleaks dir --no-banner --redact # CONFIGURE: the confirmed scanner
+        language: system
+        pass_filenames: true
+      - id: format
+        name: format (ruff format)
+        entry: ruff format --quiet # CONFIGURE: the confirmed formatter, write mode
+        language: system
+        types: [python] # CONFIGURE: the formatter's file types
+      # Medium and thick, when each fits the budget.
+      - id: lint
+        name: lint (ruff check)
+        entry: ruff check --output-format concise --quiet # CONFIGURE: the confirmed linter
+        language: system
+        types: [python] # CONFIGURE: the linter's file types
+      - id: typecheck
+        name: typecheck (pyright)
+        entry: pyright # CONFIGURE: the confirmed typechecker
+        language: system
+        pass_filenames: false
+        types: [python] # CONFIGURE: run only when these file types are staged
+      # Thick: architecture boundaries.
+      - id: boundaries
+        name: architecture boundaries
+        entry: python3 scripts/check_boundaries.py # CONFIGURE: the delivered check and its runtime
+        language: system
+        types_or: [python, ts, tsx, javascript] # CONFIGURE: the languages the check reads

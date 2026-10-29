@@ -1,0 +1,151 @@
+# The project's checks on pull requests and on pushes to the default branch.
+# Every job runs a recipe that also runs locally; `just check` is the union.
+# Job names are what a required check matches, so keep them unique across
+# workflows. No `paths:` filter on this workflow: a skipped workflow leaves
+# the required gate waiting forever.
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main] # CONFIGURE: the default branch
+
+permissions: {}
+
+# The secrets job scans only a push's own commits, so a push run is never
+# cancelled: that would leave its commits unscanned. Pull request runs are
+# cumulative and may cancel the older run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  format:
+    name: checks / format
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # CONFIGURE: the confirmed setup step; a non-actions/* action, this one included, needs the user's approval
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - run: uv tool install rust-just==1.59.0 # CONFIGURE: install the confirmed task runner
+      - run: uv sync --locked && echo "$PWD/.venv/bin" >> "$GITHUB_PATH" # CONFIGURE: install the project's checked tools (ruff, pyright, pytest) at its pinned versions
+      - run: just fmt-check
+  lint:
+    name: checks / lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # CONFIGURE: the confirmed setup step; a non-actions/* action, this one included, needs the user's approval
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - run: uv tool install rust-just==1.59.0 # CONFIGURE: install the confirmed task runner
+      - run: uv sync --locked && echo "$PWD/.venv/bin" >> "$GITHUB_PATH" # CONFIGURE: install the project's checked tools (ruff, pyright, pytest) at its pinned versions
+      - run: just lint
+  typecheck:
+    name: checks / typecheck
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # CONFIGURE: the confirmed setup step; a non-actions/* action, this one included, needs the user's approval
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - run: uv tool install rust-just==1.59.0 # CONFIGURE: install the confirmed task runner
+      - run: uv sync --locked && echo "$PWD/.venv/bin" >> "$GITHUB_PATH" # CONFIGURE: install the project's checked tools (ruff, pyright, pytest) at its pinned versions
+      - run: just typecheck
+  test:
+    name: checks / test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # CONFIGURE: the confirmed setup step; a non-actions/* action, this one included, needs the user's approval
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - run: uv tool install rust-just==1.59.0 # CONFIGURE: install the confirmed task runner
+      - run: uv sync --locked && echo "$PWD/.venv/bin" >> "$GITHUB_PATH" # CONFIGURE: install the project's checked tools (ruff, pyright, pytest) at its pinned versions
+      - run: just test
+  boundaries:
+    name: checks / boundaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # CONFIGURE: the confirmed setup step; a non-actions/* action, this one included, needs the user's approval
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - run: uv tool install rust-just==1.59.0 # CONFIGURE: install the confirmed task runner
+      - run: uv sync --locked && echo "$PWD/.venv/bin" >> "$GITHUB_PATH" # CONFIGURE: install the project's checked tools (ruff, pyright, pytest) at its pinned versions
+      - run: just boundaries
+  # harness:
+  #   The harness self-check job, delivered by the layer owning entropy.
+  #   Add it to the gate's needs when it lands.
+  secrets:
+    name: checks / secrets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install betterleaks
+        env:
+          VERSION: "1.9.0"
+          # From checksums.txt of the release; bump both together.
+          SHA256: "f8b185a39ffcece2a1ca82bf3a4e7435cd81963ffd16b7a9128daf75f35f6de7"
+        run: |
+          set -euo pipefail
+          url="https://github.com/betterleaks/betterleaks/releases/download/v${VERSION}/betterleaks_${VERSION}_linux_x64.tar.gz"
+          curl -sSfL "$url" -o "$RUNNER_TEMP/betterleaks.tar.gz"
+          echo "${SHA256}  $RUNNER_TEMP/betterleaks.tar.gz" | sha256sum -c -
+          mkdir -p "$HOME/.local/bin"
+          tar -xzf "$RUNNER_TEMP/betterleaks.tar.gz" -C "$HOME/.local/bin" betterleaks
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Scan the added commits
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        # A push that creates the branch, or follows a force push, names no
+        # usable previous commit: then the whole history is scanned.
+        run: |
+          set -euo pipefail
+          if [[ "${BASE}" =~ ^0+$ ]] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            echo "No usable previous commit; scanning the whole history."
+            betterleaks git . --no-banner --redact
+          else
+            betterleaks git . --no-banner --redact --log-opts="${BASE}..HEAD"
+          fi
+  gate:
+    # The one check to register as required. A skipped job counts as a
+    # failure here: GitHub reports a skipped job as success, so a gate that
+    # trusted it would pass with untested code.
+    name: checks / gate
+    if: always()
+    needs: [format, lint, typecheck, test, boundaries, secrets]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every needed job succeeded
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          bad=$(printf '%s' "$RESULTS" | jq -r 'to_entries[] | select(.value.result != "success") | "\(.key) (\(.value.result))"')
+          if [ -n "$bad" ]; then
+            echo "::error::Not green: $(echo "$bad" | paste -sd ',' -). Open that job's log and fix it; a skipped job fails this gate too, so do not skip or weaken it."
+            exit 1
+          fi
+          echo "All needed jobs succeeded."
