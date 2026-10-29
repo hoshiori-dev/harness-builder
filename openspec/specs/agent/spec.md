@@ -10,9 +10,9 @@ namespace directory: today Claude Code only
 Antigravity loads plugin agents only from the plugin root, which this plugin
 keeps for portable files; both are recorded limitations
 (`.agents/knowledge/compatibility-watch.md`, W9 and W2), not worked around
-through workspace configuration, so those clients get no agent files. Agents
-exist to demonstrate client-specific files; the portable product is skills and
-MCP. Each agent has its own spec at `openspec/specs/agent/<name>/spec.md`.
+through workspace configuration, so those clients get no agent files. The
+portable product is the skills; the agent is a clean-context verifier the
+entry skills dispatch where the client supports it. Each agent has its own spec at `openspec/specs/agent/<name>/spec.md`.
 
 ## Requirements
 

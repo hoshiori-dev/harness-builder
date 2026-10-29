@@ -9,11 +9,13 @@ within seven days.
 
 ## Scope
 
-- The plugin's shipped skills, MCP servers, and agents, including the bundled
-  example server and any command they instruct an agent to run.
-- The repository's workflows and scripts.
+- The plugin's shipped skills and agent, including every script, template,
+  workflow, and command they instruct an agent to run or write into a target
+  project.
+- The repository's workflows and management scripts.
 
-Vulnerabilities in the clients themselves (Claude Code, Codex, Antigravity)
+Vulnerabilities in the clients themselves (Claude Code, Codex, Antigravity),
+in the tools the skills configure (OpenSpec, Spec-Kit, betterleaks, Zensical),
 or in the Agent Plugins specification belong to their maintainers.
 
 ## Supported versions

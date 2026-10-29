@@ -8,9 +8,10 @@ source of truth and this table is the map.
 |---|---|---|---|
 | `push / check-fast` | `push`: every push to a branch other than `main` | `just check-fast` | `deno fmt --check`, `deno lint`, `deno check`, the tests, and each check script end clean |
 | `checks / lint` | `checks`: pull requests, push to `main` | `just pre-commit` | every hook `Passed`, including `just gen --check` and betterleaks on the whole tree |
-| `checks / test` | `checks` | `just test` | Deno tests pass, including the MCP smoke test that starts the server from `mcp.json` |
-| `checks / plugin` | `checks` | `just gen --check`, `just validate`, `just harness-check` | each ends with `...: ok` |
+| `checks / test` | `checks` | `just test` | Deno tests of the management scripts and pytest of the skills' Python assets pass |
+| `checks / plugin` | `checks` | `just gen --check`, `just validate`, `just skills-check`, `just harness-check` | each ends with `...: ok` |
 | `checks / spec` | `checks` | `just spec-check` | `openspec validate --all --strict` lists every spec and change as passed |
+| `checks / docs` | `checks` | `just docs-check` | the Zensical strict build finishes with `No issues found` |
 | `checks / gate` | `checks` | none (aggregator) | success when every `checks /` job above succeeded; required by the ruleset |
 | `secrets / scan` | `secrets`: every push and every pull request | `just secrets-commits <range>` | betterleaks reports `no leaks found` for the commits the push or pull request added; required by the ruleset |
 | `checks / pr` | `pr`: pull request opened, edited, synchronized, reopened, ready for review | `deno run scripts/check_pr.ts` | `check_pr: ok`; required by the ruleset |
@@ -19,6 +20,7 @@ source of truth and this table is the map.
 | `labels / pr` | `pr-labels`: pull request opened, reopened, synchronized, labeled, unlabeled (`pull_request_target`), or dispatch | `just pr-labels <n>` prints the same decision without writing | the decided state label and the label writes; never a required check |
 | `labels / sync` | `labels`: push to `main` touching `.github/labels.json`, or dispatch | `just labels --apply` | `applied N change(s)` or `labels: in sync`; holds `issues: write` and never runs on a pull-request event (the other write-token jobs are `labels / pr` and `release / publish`) |
 | `release / publish` | `release`: tag `v*` | `just check`, `just dist --tag` | a published release with `dist/<name>-<version>.zip` attached |
+| `docs / deploy` | `docs`: push to `main` touching the site | `just docs-build` | the site is deployed to GitHub Pages; never a required check |
 
 ## Workflows
 
@@ -54,7 +56,8 @@ source of truth and this table is the map.
   deno setup. A change to it is reviewed against this list.
 
 Not in CI: `just clients-validate` needs the client CLIs (Claude Code, Codex,
-Antigravity) and runs in the dev container only.
+Antigravity) and runs in the dev container only; the behavioural tests of the
+skills need an agent and run by hand (`spec-workflow.md`, validation).
 
 Every `uses:` is pinned to a commit SHA with the version tag in a trailing
 comment, and every checkout sets `persist-credentials: false`; Dependabot

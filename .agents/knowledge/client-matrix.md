@@ -1,6 +1,6 @@
 # Client Matrix
 
-Read when adding or changing a skill, MCP server, or agent, when a client does
+Read when adding or changing a skill or the agent, when a client does
 not load something, or before touching a `com.*` directory or a wiring file.
 Facts below were verified on 2026-10-27 with Claude Code 2.1.311, Codex CLI
 0.164.0, and Antigravity CLI (`agy` 1.4.7, build 2026-10-24); re-verify when a client
@@ -10,13 +10,12 @@ updates and record the date here.
 
 | Component | Codex | Claude Code | Antigravity |
 |---|---|---|---|
-| Manifest | root `plugin.json` (Agent Plugins 1.0.0) plus `extensions.com.openai` | `.claude-plugin/plugin.json`, generated: metadata mirror plus `agents` and `mcpServers` pointers | root `plugin.json`, read natively (the Agent Plugins `$schema` is recognised) |
+| Manifest | root `plugin.json` (Agent Plugins 1.0.0) plus `extensions.com.openai` | `.claude-plugin/plugin.json`, generated: metadata mirror plus the `agents` pointer | root `plugin.json`, read natively (the Agent Plugins `$schema` is recognised) |
 | Skills | root `skills/` (spec) | root `skills/` (default scan) | root `skills/` (native location matches the spec) |
-| MCP | root `mcp.json` (spec) | `com.anthropic.claude-code/mcp.json`, generated (`streamable-http`→`http`, `${PLUGIN_ROOT}`→`${CLAUDE_PLUGIN_ROOT}`) | root `mcp_config.json`, generated and transitional (no `type`, paths relative to the plugin root); read until the `enable-agent-plugins-spec` flag makes Antigravity read `mcp.json` |
 | Agents | none: Codex plugins carry no agents (W9); `just validate` rejects a `com.openai/agents/` directory | `com.anthropic.claude-code/agents/<n>.md`, listed by the generated manifest (shipped) | none: Antigravity reads plugin agents from the plugin root only, which the spec reserves for portable files (W2); `just validate` rejects a `com.google.antigravity/agents/` directory |
 | Local load | `codex plugin marketplace add .` then `codex plugin add harness-builder@harness-builder`; marketplace file `.agents/plugins/marketplace.json` (generated) | `claude --plugin-dir .`; GitHub install through the generated `.claude-plugin/marketplace.json` (`/plugin marketplace add <owner>/<repo>`) | `agy plugin install .` (copies the root into `~/.gemini/config/plugins/<name>/`, skipping dot-directories); `agy plugin uninstall <name>` to remove |
 | Install from GitHub | `codex plugin marketplace add hoshiori-dev/harness-builder` | `/plugin marketplace add hoshiori-dev/harness-builder` | `agy plugin install https://github.com/hoshiori-dev/harness-builder` |
-| Validator | `codex plugin marketplace add .` + `codex plugin list` | `claude plugin validate .` (non-strict: the root `CLAUDE.md` of this development repository draws a warning that `--strict` turns into a failure) | `agy plugin validate .` (non-strict: it notes that `mcp_config.json` is used only while the flag is off) |
+| Validator | `codex plugin marketplace add .` + `codex plugin list` | `claude plugin validate .` (non-strict: the root `CLAUDE.md` of this development repository draws a warning that `--strict` turns into a failure) | `agy plugin validate .` |
 
 Decision rule behind the table: spec-defined things use the spec; a client
 that cannot read the spec gets a pointer in its own manifest when it has one,
@@ -38,8 +37,9 @@ client-footprint <id>` prints the files a client owns.
 
 Every limitation, the workaround built for it, how to re-check it, and what
 to do when it lifts is one row of `.agents/knowledge/compatibility-watch.md`.
-Headlines only: Antigravity reads `mcp.json` only behind a flag (W1) and
-plugin agents only from the plugin root (W2); Claude Code needs
+Headlines only: Antigravity reads plugin agents only from the plugin root
+(W2); this plugin ships no MCP server, so the MCP rows (W1, W3) describe
+generator branches that stay dormant; Claude Code needs
 `.claude/skills` symlinks (W6) and generated pointer files (W7); Codex plugins
 ship no agents (W9); `com.anthropic.claude-code` is a self-chosen namespace
 (W10).

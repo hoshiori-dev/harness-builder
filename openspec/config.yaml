@@ -11,39 +11,63 @@ context: |
   under com.*/agents/; Claude Code today). The plugin ships no MCP server.
   Every shipped entry has exactly one spec and every spec has
   exactly one shipped entry; `just validate` enforces the pairing.
-  A change to the harness, scripts, CI, documentation, or generated client
-  files is spec-less and usually needs no change directory; one opened for a
-  recorded design sets skip_specs: true in its .openspec.yaml and ships
-  proposal, design, and tasks only.
-  Write every artifact in English.
+  A change to the harness, scripts, CI, documentation, the docs site, or
+  generated client files is spec-less and usually needs no change directory;
+  one opened for a recorded design sets skip_specs: true in its .openspec.yaml
+  and ships proposal, design, and tasks only.
+  An entry spec's scenarios are the entry's behavioural test cases; they run
+  by hand through clean-context subagents, never in CI.
+  Write every artifact in English. Read .agents/knowledge/skill-quality.md
+  before writing a spec for a skill.
 
 rules:
   proposal:
     - State which catalogs and clients the change touches, and name every
-      entry that is added, changed, or removed.
-    - End with an "Acceptance" section listing what becomes true and what
-      must stay true, each checkable by a command or a client walkthrough.
+      entry that is added, changed, or removed; link the GitHub issue.
+    - Describe the end state, never the approach or steps.
+    - 'End with "## Acceptance" holding two lists of checkable items, "**Becomes true:**" and "**Stays true:**" (invariants that must hold under any approach); each item is checkable by a command, a client walkthrough, or a spec scenario.'
   specs:
     - A catalog-level spec states rules only; it never describes one entry.
     - An entry spec's Purpose names the clients the entry ships to and any
-      client where it is not shipped, with the reason.
-    - Describe observable behaviour, not file contents or implementation
-      steps; every requirement has at least one scenario a reader can judge
-      without reading code.
+      client where it is not shipped, with the reason, and lists the entry's
+      non-goals.
+    - Describe observable behaviour (what the agent does or produces when the
+      entry loads), never file contents or implementation steps.
+    - Every requirement has at least one scenario a reader can judge without
+      reading the skill, and the spec as a whole has at least one scenario
+      covering a failure or edge path.
+    - A skill spec carries its behavioural test cases as scenarios in two
+      requirements, "Triggering" (at least three prompts that load it and
+      three near misses that do not; no prompt names the skill) and
+      "Outcomes" (at least two tasks with the observable result expected).
+    - 'Scenario names carry no value ("Omitted version", not "Latest by default") so a MODIFIED requirement keeps every scenario name.'
   design:
+    - Describe how the proposal's end state is reached; never restate its goal
+      or acceptance.
+    - 'Put in Goals / Non-Goals the constraints and invariants of the chosen approach, each with how it is checked ("Checked by …").'
     - List the client-specific files the change needs under each com.*
       directory and which of them `just gen` produces.
+    - Record decisions with the rejected alternatives; state bounds, not
+      steps; never include secrets or private data.
   tasks:
-    - Write tasks only after the proposal is approved on the pull request.
-    - Every change ends with `just gen`, `just check`, and, for client-facing
-      entries, `just clients-validate`; include those as the last tasks.
+    - Write tasks.md only after the pull request carries `spec:approved`, read
+      with `just pr-labels <n>`; otherwise stop and report that the approval
+      package is ready for review.
+    - Each task names its own verification; a skill task names the scenarios
+      it closes.
+    - End with `just gen`, `just skills-check`, `just check`, the behavioural
+      tests, and `just clients-validate`; include them as the last tasks.
     - Never add a task that archives the change or syncs specs by itself;
-      the implementer archives on the pull request before merge.
+      the implementer archives on the pull request after the review.
 
 operations:
   apply:
     guidance:
+      - Implement only while the pull request carries `spec:approved`
+        (`just pr-labels <n>`); otherwise stop and ask.
       - Implement one task at a time and keep `just check` green between tasks.
   archive:
     guidance:
-      - Archive only after `just check` passes and the pull request is approved.
+      - Archive only after `just check` passes, the behavioural tests are
+        recorded, and the maintainer approved the pull request and asked for
+        the archive in the current conversation.
