@@ -1,0 +1,6 @@
+# Review routing: CODEOWNERS only requests review; a ruleset's code-owner
+# review setting is what requires it. The last matching pattern wins, owners
+# need write access, and invalid lines are skipped silently: check with
+# gh api repos/OWNER/REPO/codeowners/errors after every change.
+{{DEFAULT_OWNER_LINE}} # CONFIGURE: replace this whole line with "* @login-or-org/team".
+{{AREA_OWNER_LINES}} # CONFIGURE: replace this whole line with one "path/ @owner" line per area label, or delete it.

@@ -1,0 +1,32 @@
+name: Bug report
+description: "{{PROJECT_NAME}} behaves differently from what it is meant to do" # CONFIGURE: the project's name.
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happens
+      description: The observed behaviour, exactly. Paste output rather than paraphrasing it.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+      description: The intended behaviour. With the field above, this is the acceptance baseline for the fix.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: How to reproduce
+      description: The smallest known sequence of steps, commands, or input.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Version or commit, environment, related issues or pull requests, logs with secrets removed.
+    validations:
+      required: false

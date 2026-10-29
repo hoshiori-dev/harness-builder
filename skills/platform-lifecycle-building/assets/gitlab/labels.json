@@ -1,0 +1,7 @@
+[
+  {"name": "type:bug", "color": "d73a4a", "description": "Observed behaviour differs from what is intended"},
+  {"name": "type:feature", "color": "0e8a16", "description": "A new or changed capability"},
+  {"name": "type:task", "color": "1d76db", "description": "Planned work with an agreed outcome"},
+  {"name": "area:core", "color": "c5def5", "description": "The main package or service"},
+  {"name": "area:docs", "color": "c5def5", "description": "Documentation"}
+]

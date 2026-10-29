@@ -1,0 +1,32 @@
+name: Feature request
+description: "Propose a new capability for {{PROJECT_NAME}}" # CONFIGURE: the project's name.
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What becomes possible, and for whom, once this exists.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why now; prior discussion, alternatives considered, links.
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance sketch
+      description: How we would observe that this is done. Rough is fine; triage refines it.
+    validations:
+      required: false
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: What this request deliberately does not cover.
+    validations:
+      required: false

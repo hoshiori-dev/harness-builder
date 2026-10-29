@@ -1,0 +1,19 @@
+# Fragment for .gitlab-ci.yml. Applies the committed label file when a push
+# to the default branch changes it; it creates and updates labels and never
+# deletes one. CI_JOB_TOKEN cannot write labels, so the job reads
+# LABEL_SYNC_TOKEN: a project access token with the api scope and the
+# Planner role (Reporter before GitLab 17.7), stored as a masked, protected
+# variable. Protected variables reach only protected-branch pipelines, so
+# merge-request and fork pipelines never see the token.
+labels-sync:
+  stage: deploy
+  image: "{{IMAGE_WITH_PYTHON_AND_GLAB}}@sha256:{{DIGEST}}" # CONFIGURE: an image providing python3 and glab, pinned by digest.
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - .gitlab/labels.json
+  variables:
+    GITLAB_TOKEN: $LABEL_SYNC_TOKEN
+    GITLAB_HOST: $CI_SERVER_HOST
+  script:
+    - python3 scripts/sync_labels.py --platform gitlab --hostname "$CI_SERVER_HOST" --file .gitlab/labels.json --repo "$CI_PROJECT_PATH" --apply
