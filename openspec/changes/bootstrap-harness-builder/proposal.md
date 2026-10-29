@@ -67,7 +67,7 @@ None.
 
 ## Impact
 
-- Files: `skills/<name>/` for the fourteen skills, each with `SKILL.md`,
+- Files: `skills/<name>/` for the fifteen skills, each with `SKILL.md`,
   `references/`, and where applicable `assets/` and `scripts/` (Python, each
   with a `_test.py`); `com.anthropic.claude-code/agents/harness-verifier.md`;
   `openspec/specs/skill/<name>/spec.md` and
@@ -86,7 +86,7 @@ None.
 
 **Becomes true:**
 
-- `just check` and `just clients-validate` pass with fourteen skills under
+- `just check` and `just clients-validate` pass with fifteen skills under
   `skills/` and one agent file; `.claude-plugin/plugin.json` lists the agent
   and no `mcpServers`.
 - `/harness-create` and `/harness-improve` appear as user-invoked skills in
@@ -99,7 +99,7 @@ None.
 - Running `/harness-create` against a scratch repository in the dev
   container produces an `AGENTS.md` within budget, reachable knowledge files,
   and a `check_harness.py` that passes there (the canary).
-- Both README skill tables list all fourteen skills (`just harness-check`).
+- Both README skill tables list all fifteen skills (`just harness-check`).
 
 **Stays true:**
 

@@ -112,7 +112,7 @@ skill library or of an install command.
 
 ## Risks / Trade-offs
 
-- [Fourteen skills written in one change are hard to review as a whole] →
+- [Fifteen skills written in one change are hard to review as a whole] →
   one task and one commit per skill; the delta specs are reviewed before any
   skill is written; each skill's scenarios are run before ready.
 - [Shared blocks tempt copy drift] → `just skills-check` fails on any
