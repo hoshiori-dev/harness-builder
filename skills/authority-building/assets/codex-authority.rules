@@ -1,0 +1,50 @@
+# CONFIGURE: {{ALLOW_RULES}}: replace this comment with one prefix_rule(decision = "allow") per confirmed command or task-runner recipe, each from observed evidence, e.g. pattern = ["just", "test"], pattern = ["npm", "test"]; never a bare runner such as pattern = ["just"], and no recipe or command that pushes, publishes, releases, or writes to a tracker.
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Discards uncommitted work; use the rollback recipe, which commits first.",
+    match = ["git reset --hard HEAD~1"],
+    not_match = ["git reset --soft HEAD~1"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "--force-with-lease", "-f", "--all", "--mirror", "--tags"]],
+    decision = "forbidden",
+    justification = "Rewrites pushed history or publishes in bulk; a push names one ref.",
+    match = ["git push --force origin main", "git push --tags"],
+    not_match = ["git push origin HEAD"],
+)
+
+# CONFIGURE: replace "origin" here and in match with the project's remote name, or a list of alternatives such as ["origin", "upstream"]; keep it equal to the remote in the checkpoint recipes.
+prefix_rule(
+    pattern = ["git", "push", "origin", ["--force", "--force-with-lease", "-f", "--all", "--mirror", "--tags"]],
+    decision = "forbidden",
+    justification = "Same as above with the remote named first.",
+    match = ["git push origin --force main"],
+    not_match = ["git push origin HEAD"],
+)
+
+prefix_rule(
+    pattern = ["git", "clean", ["-f", "--force", "-fd", "-df", "-fdx", "-dfx", "-xdf", "-xfd", "-ffd"]],
+    decision = "forbidden",
+    justification = "Deletes untracked work.",
+    match = ["git clean -fd"],
+    not_match = ["git clean -n"],
+)
+
+prefix_rule(
+    pattern = ["git", "branch", "-D"],
+    decision = "forbidden",
+    justification = "Deletes unmerged work; use -d, which refuses unmerged branches.",
+    match = ["git branch -D feature"],
+    not_match = ["git branch -d feature"],
+)
+
+prefix_rule(
+    pattern = ["rm", ["-rf", "-fr", "-r", "-R"], [".", "./", "/", "~"]],
+    decision = "forbidden",
+    justification = "Removes the repository, the home directory, or the filesystem root.",
+    match = ["rm -rf .", "rm -rf /", "rm -rf ~"],
+    not_match = ["rm -rf build/"],
+)

@@ -1,0 +1,2 @@
+# CONFIGURE: the approval mode confirmed in the authority decisions: "on-request" (interactive) or "never" (unattended runs); "untrusted" only when the owner kept per-command approval as a recorded deviation.
+approval_policy = "on-request"
